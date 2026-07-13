@@ -1,10 +1,11 @@
+import { EditorialCommandCenter } from "@/components/editorial-command-center";
+
 const modules = [
-  ["Breaking News", "High-confidence alerts requiring human review"],
-  ["Editorial Queue", "Discovery through WordPress draft approval"],
-  ["Story Radar", "Trusted-source monitoring and clustering"],
-  ["AI Editor", "Drafts, SEO, social, newsletter, and fact-check support"],
-  ["Site Health", "Search, analytics, crawl, and uptime signals"],
-  ["Approval Queue", "Final control before any public action"],
+  ["Breaking News", "#breaking-news"],
+  ["Story Radar", "#story-radar"],
+  ["Editorial Queue", "#editorial-queue"],
+  ["Site Health", "#site-health"],
+  ["Approval Queue", "#approval-queue"],
 ];
 
 export default function CommandCenterPage() {
@@ -15,36 +16,33 @@ export default function CommandCenterPage() {
           <div className="mark">🌶️</div>
           <div>
             <h1>CAIOS</h1>
-            <p>Newsroom OS v4.0</p>
+            <p>Newsroom OS v4.0.2</p>
           </div>
         </div>
+
         <nav>
-          {modules.map(([name]) => <a href={`#${name.toLowerCase().replaceAll(" ", "-")}`} key={name}>{name}</a>)}
+          {modules.map(([name, href]) => (
+            <a href={href} key={name}>{name}</a>
+          ))}
         </nav>
-        <div className="rule"><strong>Operating Rule</strong><span>AI prepares. The Chile approves.</span></div>
+
+        <div className="rule">
+          <strong>Operating Rule</strong>
+          <span>AI prepares. The Chile approves.</span>
+        </div>
       </aside>
 
       <section className="content">
         <header className="hero">
           <p className="eyebrow">Chilemaniacs Newsroom Command Center</p>
-          <h2>One control room for the entire editorial operation.</h2>
-          <p>v4.0 begins with a clean, testable application shell. No publishing automation is enabled.</p>
+          <h2>One live control room for editorial intelligence, workflow, health, and approval.</h2>
+          <p>
+            This milestone introduces a typed, testable command-center MVP using safe mock data.
+            No external writes, WordPress publishing, or deployment actions are enabled.
+          </p>
         </header>
 
-        <section className="grid">
-          {modules.map(([name, description]) => (
-            <article id={name.toLowerCase().replaceAll(" ", "-")} key={name} className="card">
-              <span className="status">Foundation</span>
-              <h3>{name}</h3>
-              <p>{description}</p>
-            </article>
-          ))}
-        </section>
-
-        <section className="workflow">
-          <h3>Mandatory Editorial Workflow</h3>
-          <p>Discovery → Verification → Clustering → Scoring → Research → Draft → Fact Check → SEO Review → Human Approval → WordPress Draft</p>
-        </section>
+        <EditorialCommandCenter />
       </section>
     </main>
   );
