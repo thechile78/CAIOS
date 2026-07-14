@@ -9,6 +9,7 @@ permissions:
 
 jobs:
   generate:
+    if: ${{ github.actor != 'github-actions[bot]' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -35,18 +36,17 @@ jobs:
           from pathlib import Path
           path = Path('.github/workflows/ci.yml')
           text = path.read_text()
-          text = text.replace('node-version: 22\n', 'node-version: 22\n          cache: npm\n', 1)
+          if 'cache: npm' not in text:
+              text = text.replace('node-version: 22\n', 'node-version: 22\n          cache: npm\n', 1)
           text = text.replace('npm install --no-audit --no-fund', 'npm ci --no-audit --no-fund', 1)
           path.write_text(text)
           PY
 
-      - name: Remove one-time generator
-        run: rm .github/workflows/generate-lockfile.yml
-
-      - name: Commit verified changes to feature branch
+      - name: Commit verified lockfile and CI change
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add package-lock.json .github/workflows/ci.yml .github/workflows/generate-lockfile.yml
+          git add package-lock.json .github/workflows/ci.yml
+          git diff --cached --quiet && exit 0
           git commit -m "chore: add verified package lockfile and use npm ci"
           git push origin HEAD:chore/add-lockfile-and-ci
