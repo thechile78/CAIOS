@@ -53,3 +53,5 @@ jobs:
           git add package-lock.json .github/workflows/ci.yml .github/workflows/generate-lockfile.yml
           git commit -m "chore: add verified package lockfile and use npm ci"
           git push origin HEAD:chore/add-lockfile-and-ci
+
+# Triggered after repository workflow write permission was enabled.
