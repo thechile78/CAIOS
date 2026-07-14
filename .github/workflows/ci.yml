@@ -2,12 +2,16 @@ name: CI
 
 on:
   push:
-    branches: [main, feature/**]
+    branches: [main, feature/**, chore/**]
   pull_request:
-    branches: [main, feature/**]
+    branches: [main]
 
 permissions:
   contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   verify:
@@ -24,7 +28,10 @@ jobs:
           node-version: 22
 
       - name: Install dependencies
-        run: npm install
+        run: npm install --no-audit --no-fund
+
+      - name: Dependency audit
+        run: npm audit --audit-level=critical
 
       - name: Lint
         run: npm run lint
