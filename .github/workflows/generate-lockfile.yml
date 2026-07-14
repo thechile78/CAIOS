@@ -3,6 +3,8 @@ name: Generate lockfile artifact
 on:
   push:
     branches: [chore/add-lockfile-and-ci]
+  pull_request:
+    branches: [main]
 
 permissions:
   contents: read
