@@ -10,7 +10,6 @@ permissions:
 
 jobs:
   generate:
-    if: ${{ github.actor != 'github-actions[bot]' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -20,34 +19,37 @@ jobs:
         with:
           ref: chore/add-lockfile-and-ci
 
+      - name: Stop when lockfile already exists
+        id: lockfile
+        run: |
+          if [ -f package-lock.json ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Setup Node
+        if: steps.lockfile.outputs.exists == 'false'
         uses: actions/setup-node@v4
         with:
           node-version: 22
 
       - name: Generate genuine package-lock.json
+        if: steps.lockfile.outputs.exists == 'false'
         run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
 
       - name: Verify lockfile with npm ci
+        if: steps.lockfile.outputs.exists == 'false'
         run: npm ci --ignore-scripts --no-audit --no-fund
 
-      - name: Update CI for deterministic installs
+      - name: Commit verified lockfile through GitHub API
+        if: steps.lockfile.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          python - <<'PY'
-          from pathlib import Path
-          path = Path('.github/workflows/ci.yml')
-          text = path.read_text()
-          if 'cache: npm' not in text:
-              text = text.replace('node-version: 22\n', 'node-version: 22\n          cache: npm\n', 1)
-          text = text.replace('npm install --no-audit --no-fund', 'npm ci --no-audit --no-fund', 1)
-          path.write_text(text)
-          PY
-
-      - name: Commit verified changes
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add package-lock.json .github/workflows/ci.yml
-          git diff --cached --quiet && exit 0
-          git commit -m "chore: add verified package lockfile and use npm ci"
-          git push origin HEAD:chore/add-lockfile-and-ci
+          encoded=$(base64 -w0 package-lock.json)
+          gh api --method PUT \
+            "repos/${GITHUB_REPOSITORY}/contents/package-lock.json" \
+            -f message='chore: add verified package lockfile' \
+            -f branch='chore/add-lockfile-and-ci' \
+            -f content="$encoded"
