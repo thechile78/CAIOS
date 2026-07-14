@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, feature/**, chore/**]
+    branches: [main, feature/**, chore/**, hotfix/**]
   pull_request:
     branches: [main]
 
@@ -55,7 +55,21 @@ jobs:
         run: exit 1
 
       - name: Tests
-        run: npm test
+        id: tests
+        continue-on-error: true
+        run: npm test 2>&1 | tee test.log
+
+      - name: Upload test diagnostics
+        if: steps.tests.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-diagnostics
+          path: test.log
+          retention-days: 3
+
+      - name: Fail on test errors
+        if: steps.tests.outcome == 'failure'
+        run: exit 1
 
       - name: Production build
         run: npm run build
