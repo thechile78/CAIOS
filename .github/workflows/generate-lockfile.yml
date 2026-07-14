@@ -1,13 +1,11 @@
-name: Generate lockfile artifact
+name: Generate and commit verified lockfile
 
 on:
   push:
     branches: [chore/add-lockfile-and-ci]
-  pull_request:
-    branches: [main]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   generate:
@@ -15,23 +13,40 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - name: Checkout
+      - name: Checkout branch
         uses: actions/checkout@v4
+        with:
+          ref: chore/add-lockfile-and-ci
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      - name: Generate package-lock.json
+      - name: Generate genuine package-lock.json
         run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
 
       - name: Verify lockfile with npm ci
         run: npm ci --ignore-scripts --no-audit --no-fund
 
-      - name: Upload verified lockfile
-        uses: actions/upload-artifact@v4
-        with:
-          name: verified-package-lock
-          path: package-lock.json
-          retention-days: 3
+      - name: Update CI for deterministic installs
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('.github/workflows/ci.yml')
+          text = path.read_text()
+          text = text.replace('node-version: 22\n', 'node-version: 22\n          cache: npm\n', 1)
+          text = text.replace('npm install --no-audit --no-fund', 'npm ci --no-audit --no-fund', 1)
+          path.write_text(text)
+          PY
+
+      - name: Remove one-time generator
+        run: rm .github/workflows/generate-lockfile.yml
+
+      - name: Commit verified changes to feature branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json .github/workflows/ci.yml .github/workflows/generate-lockfile.yml
+          git commit -m "chore: add verified package lockfile and use npm ci"
+          git push origin HEAD:chore/add-lockfile-and-ci
