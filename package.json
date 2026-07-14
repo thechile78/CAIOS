@@ -1,6 +1,6 @@
 {
   "name": "caios",
-  "version": "4.1.0",
+  "version": "4.3.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -12,6 +12,8 @@
     "check": "npm run lint && npm run typecheck && npm run test && npm run build"
   },
   "dependencies": {
+    "@supabase/ssr": "latest",
+    "@supabase/supabase-js": "latest",
     "next": "latest",
     "react": "latest",
     "react-dom": "latest"
