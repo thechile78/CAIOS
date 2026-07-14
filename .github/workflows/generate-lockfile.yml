@@ -31,13 +31,23 @@ jobs:
       - name: Verify lockfile with npm ci
         run: npm ci --ignore-scripts --no-audit --no-fund
 
-      - name: Commit verified lockfile through GitHub API
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Update CI for deterministic installs
         run: |
-          encoded=$(base64 -w0 package-lock.json)
-          gh api --method PUT \
-            "repos/${GITHUB_REPOSITORY}/contents/package-lock.json" \
-            -f message='chore: add verified package lockfile' \
-            -f branch='chore/add-lockfile-and-ci' \
-            -f content="$encoded"
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('.github/workflows/ci.yml')
+          text = path.read_text()
+          if 'cache: npm' not in text:
+              text = text.replace('node-version: 22\n', 'node-version: 22\n          cache: npm\n', 1)
+          text = text.replace('npm install --no-audit --no-fund', 'npm ci --no-audit --no-fund', 1)
+          path.write_text(text)
+          PY
+
+      - name: Commit verified changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json .github/workflows/ci.yml
+          git diff --cached --quiet && exit 0
+          git commit -m "chore: add verified package lockfile and use npm ci"
+          git push origin HEAD:chore/add-lockfile-and-ci
