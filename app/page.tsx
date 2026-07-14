@@ -1,8 +1,10 @@
+import { signOut } from "@/app/login/actions";
+import { AuthenticatedEditorialQueue } from "@/components/authenticated-editorial-queue";
 import { EditorialCommandCenter } from "@/components/editorial-command-center";
 import { requireCurrentProfile, roleCanReview } from "@/lib/auth";
-import { signOut } from "@/app/login/actions";
 
 const modules = [
+  ["Authenticated Queue", "#authenticated-editorial-queue"],
   ["Breaking News", "#breaking-news"],
   ["Story Radar", "#story-radar"],
   ["Editorial Queue", "#editorial-queue"],
@@ -22,7 +24,7 @@ export default async function CommandCenterPage() {
           <div className="mark">🌶️</div>
           <div>
             <h1>CAIOS</h1>
-            <p>Newsroom OS v4.3</p>
+            <p>Newsroom OS v4.4</p>
           </div>
         </div>
 
@@ -50,13 +52,14 @@ export default async function CommandCenterPage() {
       <section className="content">
         <header className="hero">
           <p className="eyebrow">Chilemaniacs Newsroom Command Center</p>
-          <h2>One secure control room for editorial intelligence, workflow, health, and approval.</h2>
+          <h2>One secure control room for authenticated editorial intelligence, workflow, health, and approval.</h2>
           <p>
-            Access is authenticated and role-aware. External writes, WordPress publishing,
-            and deployment actions remain disabled.
+            The first live newsroom module reads through the authenticated Supabase session and row-level security.
+            External writes, WordPress publishing, and deployment actions remain disabled.
           </p>
         </header>
 
+        <AuthenticatedEditorialQueue role={profile.role} />
         <EditorialCommandCenter />
       </section>
     </main>
