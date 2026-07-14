@@ -2,12 +2,16 @@ name: CI
 
 on:
   push:
-    branches: [main, feature/**]
+    branches: [main, feature/**, chore/**]
   pull_request:
-    branches: [main, feature/**]
+    branches: [main]
 
 permissions:
   contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   verify:
@@ -24,13 +28,30 @@ jobs:
           node-version: 22
 
       - name: Install dependencies
-        run: npm install
+        run: npm install --no-audit --no-fund
+
+      - name: Dependency audit
+        run: npm audit --audit-level=critical
 
       - name: Lint
         run: npm run lint
 
       - name: Typecheck
-        run: npm run typecheck
+        id: typecheck
+        continue-on-error: true
+        run: npm run typecheck -- --pretty false 2>&1 | tee typecheck.log
+
+      - name: Upload TypeScript diagnostics
+        if: steps.typecheck.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: typecheck-diagnostics
+          path: typecheck.log
+          retention-days: 3
+
+      - name: Fail on TypeScript errors
+        if: steps.typecheck.outcome == 'failure'
+        run: exit 1
 
       - name: Tests
         run: npm test
