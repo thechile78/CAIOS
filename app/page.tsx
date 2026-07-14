@@ -1,4 +1,6 @@
 import { EditorialCommandCenter } from "@/components/editorial-command-center";
+import { requireCurrentProfile, roleCanReview } from "@/lib/auth";
+import { signOut } from "@/app/login/actions";
 
 const modules = [
   ["Breaking News", "#breaking-news"],
@@ -8,7 +10,11 @@ const modules = [
   ["Approval Queue", "#approval-queue"],
 ];
 
-export default function CommandCenterPage() {
+export const dynamic = "force-dynamic";
+
+export default async function CommandCenterPage() {
+  const profile = await requireCurrentProfile();
+
   return (
     <main className="shell">
       <aside className="sidebar">
@@ -16,7 +22,7 @@ export default function CommandCenterPage() {
           <div className="mark">🌶️</div>
           <div>
             <h1>CAIOS</h1>
-            <p>Newsroom OS v4.0.2</p>
+            <p>Newsroom OS v4.3</p>
           </div>
         </div>
 
@@ -27,6 +33,15 @@ export default function CommandCenterPage() {
         </nav>
 
         <div className="rule">
+          <strong>{profile.displayName ?? profile.email ?? "Newsroom user"}</strong>
+          <span>Role: {profile.role.replaceAll("_", " ")}</span>
+          <span>{roleCanReview(profile.role) ? "Approval review enabled" : "Approval review restricted"}</span>
+          <form action={signOut}>
+            <button type="submit">Sign out</button>
+          </form>
+        </div>
+
+        <div className="rule">
           <strong>Operating Rule</strong>
           <span>AI prepares. The Chile approves.</span>
         </div>
@@ -35,10 +50,10 @@ export default function CommandCenterPage() {
       <section className="content">
         <header className="hero">
           <p className="eyebrow">Chilemaniacs Newsroom Command Center</p>
-          <h2>One live control room for editorial intelligence, workflow, health, and approval.</h2>
+          <h2>One secure control room for editorial intelligence, workflow, health, and approval.</h2>
           <p>
-            This milestone introduces a typed, testable command-center MVP using safe mock data.
-            No external writes, WordPress publishing, or deployment actions are enabled.
+            Access is authenticated and role-aware. External writes, WordPress publishing,
+            and deployment actions remain disabled.
           </p>
         </header>
 
