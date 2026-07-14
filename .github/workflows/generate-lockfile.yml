@@ -1,0 +1,35 @@
+name: Generate lockfile artifact
+
+on:
+  push:
+    branches: [chore/add-lockfile-and-ci]
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Generate package-lock.json
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+
+      - name: Verify lockfile with npm ci
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Upload verified lockfile
+        uses: actions/upload-artifact@v4
+        with:
+          name: verified-package-lock
+          path: package-lock.json
+          retention-days: 3
