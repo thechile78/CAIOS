@@ -18,10 +18,24 @@ export async function createInternalPackage(formData: FormData) {
   }
 
   const supabase = await createSupabaseServerClient();
-  const { data: sources } = await supabase
+  const { data: handoff, error: handoffError } = await supabase
+    .from("editorial_handoffs")
+    .select("story_id")
+    .eq("id", handoffId)
+    .single();
+
+  if (handoffError || !handoff) {
+    redirect(`/handoffs/${encodeURIComponent(handoffId)}/package?error=Handoff%20not%20found.`);
+  }
+
+  const { data: sources, error: sourceError } = await supabase
     .from("sources")
-    .select("id, url, title, publisher, reliability, accessed_at")
-    .eq("story_id", handoffId);
+    .select("*")
+    .eq("story_id", handoff.story_id);
+
+  if (sourceError) {
+    redirect(`/handoffs/${encodeURIComponent(handoffId)}/package?error=Source%20snapshot%20failed.`);
+  }
 
   const { data, error } = await supabase.rpc("package_approved_handoff", {
     p_handoff_id: handoffId,
