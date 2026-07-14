@@ -1,5 +1,34 @@
 import { alerts, kpis, siteHealth, stories, workflow } from "@/lib/newsroom";
 
+interface KPI {
+  label: string;
+  value: number;
+  detail: string;
+}
+
+interface Alert {
+  id: number;
+  severity: string;
+  title: string;
+  reason: string;
+}
+
+interface HealthItem {
+  label: string;
+  status: string;
+  tone: string;
+}
+
+interface Story {
+  id: number;
+  score: number;
+  headline: string;
+  desk: string;
+  sourceCount: number;
+  stage: string;
+  houstonRelevant: boolean;
+}
+
 function scoreClass(score: number) {
   if (score >= 90) return "score score-critical";
   if (score >= 80) return "score score-high";
@@ -10,7 +39,7 @@ export function EditorialCommandCenter() {
   return (
     <>
       <section className="kpi-grid" aria-label="Newsroom key metrics">
-        {kpis.map((item) => (
+        {kpis.map((item: KPI) => (
           <article className="kpi-card" key={item.label}>
             <span>{item.label}</span>
             <strong>{item.value}</strong>
@@ -30,7 +59,7 @@ export function EditorialCommandCenter() {
           </div>
 
           <div className="alert-list">
-            {alerts.map((alert) => (
+            {alerts.map((alert: Alert) => (
               <div className="alert-item" key={alert.id}>
                 <span className={`severity severity-${alert.severity.toLowerCase()}`}>{alert.severity}</span>
                 <div>
@@ -51,7 +80,7 @@ export function EditorialCommandCenter() {
             </div>
           </div>
           <div className="health-list">
-            {siteHealth.map((item) => (
+            {siteHealth.map((item: HealthItem) => (
               <div className="health-row" key={item.label}>
                 <span>{item.label}</span>
                 <strong className={`health-${item.tone}`}>{item.status}</strong>
@@ -83,7 +112,7 @@ export function EditorialCommandCenter() {
               </tr>
             </thead>
             <tbody>
-              {stories.map((story) => (
+              {stories.map((story: Story) => (
                 <tr key={story.id}>
                   <td><span className={scoreClass(story.score)}>{story.score}</span></td>
                   <td><strong>{story.headline}</strong></td>
@@ -108,7 +137,7 @@ export function EditorialCommandCenter() {
         </div>
 
         <ol className="workflow-track">
-          {workflow.map((stage, index) => (
+          {workflow.map((stage: string, index: number) => (
             <li className={stage === "Human Approval" ? "approval-stage" : ""} key={stage}>
               <span>{index + 1}</span>
               <strong>{stage}</strong>
