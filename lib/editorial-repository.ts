@@ -119,48 +119,39 @@ export async function getNewsroomDashboardSnapshot(): Promise<NewsroomDashboardS
     ...workflowRequests,
   ]);
 
-  const failures = [
-    activeResult.error,
-    highPriorityResult.error,
-    awaitingApprovalResult.error,
-    totalSourcesResult.error,
-    verifiedSourcesResult.error,
-    priorityStoriesResult.error,
-    wordpressDraftsResult.error,
-    publishedStoriesResult.error,
-    ...workflowResults.map((result) => result.error),
-  ].filter(Boolean);
+  // Dashboard metrics are observational. A denied or temporarily unavailable
+  // optional query must never take down the authenticated newsroom homepage.
+  const safeCount = (result: { count: number | null; error: unknown }) =>
+    result.error ? 0 : (result.count ?? 0);
 
-  if (failures.length > 0) {
-    throw new Error("Unable to load the live newsroom dashboard snapshot.");
-  }
-
-  const totalSources = totalSourcesResult.count ?? 0;
-  const verifiedSources = verifiedSourcesResult.count ?? 0;
+  const totalSources = safeCount(totalSourcesResult);
+  const verifiedSources = safeCount(verifiedSourcesResult);
 
   return {
-    activeStories: activeResult.count ?? 0,
-    highPriorityStories: highPriorityResult.count ?? 0,
-    awaitingApproval: awaitingApprovalResult.count ?? 0,
+    activeStories: safeCount(activeResult),
+    highPriorityStories: safeCount(highPriorityResult),
+    awaitingApproval: safeCount(awaitingApprovalResult),
     totalSources,
     verifiedSources,
     sourceHealthPercent: totalSources > 0 ? Math.round((verifiedSources / totalSources) * 100) : null,
-    wordpressDrafts: wordpressDraftsResult.count ?? 0,
-    publishedStories: publishedStoriesResult.count ?? 0,
+    wordpressDrafts: safeCount(wordpressDraftsResult),
+    publishedStories: safeCount(publishedStoriesResult),
     workflowCounts: workflowStages.map(([status, label], index) => ({
       status,
       label,
-      count: workflowResults[index]?.count ?? 0,
+      count: workflowResults[index]?.error ? 0 : (workflowResults[index]?.count ?? 0),
     })),
-    priorityStories: (priorityStoriesResult.data ?? []).map((story) => ({
-      id: story.id,
-      title: story.title,
-      desk: story.desk,
-      priority: story.priority,
-      status: story.status,
-      summary: story.summary,
-      ownerId: story.owner_id,
-      updatedAt: story.updated_at,
-    })),
+    priorityStories: priorityStoriesResult.error
+      ? []
+      : (priorityStoriesResult.data ?? []).map((story) => ({
+          id: story.id,
+          title: story.title,
+          desk: story.desk,
+          priority: story.priority,
+          status: story.status,
+          summary: story.summary,
+          ownerId: story.owner_id,
+          updatedAt: story.updated_at,
+        })),
   };
 }
