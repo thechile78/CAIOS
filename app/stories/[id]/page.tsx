@@ -6,6 +6,7 @@ import { getStoryIntelligence } from "@/lib/story-intelligence";
 import { getWordPressDraftBridgeState } from "@/lib/wordpress-draft-bridge";
 import { saveStoryEditorialAction } from "./actions";
 import { recordEditorialDecisionAction, saveEditorialChecklistAction } from "./approval-actions";
+import { EditorialScorecard } from "./editorial-scorecard";
 import { prepareWordPressDraftIntentAction } from "./wordpress-actions";
 
 export const dynamic = "force-dynamic";
@@ -97,6 +98,8 @@ export default async function StoryIntelligencePage({ params, searchParams }: St
         <article className="kpi-card"><span>Suggested priority</span><strong>{intelligence.recommendedPriority}</strong><small>Recommendation only</small></article>
         <article className="kpi-card"><span>Sources</span><strong>{sources.length}</strong><small>{intelligence.verificationStatus}</small></article>
       </section>
+
+      <EditorialScorecard scorecard={intelligence.scorecard} />
 
       <section className="panel editorial-workspace-panel">
         <div className="panel-heading"><div><p className="eyebrow">Validated write path</p><h3>Edit story record</h3></div><span className="safety-badge safety-strong">No publishing</span></div>
