@@ -95,6 +95,21 @@ nav a:hover { background: var(--red); }
 .editorial-action-row { display: flex; flex-wrap: wrap; gap: 12px; }
 .editorial-form-note { margin: 0; color: var(--muted); line-height: 1.5; }
 
+.scorecard-panel { border-left: 6px solid var(--blue); }
+.scorecard-total { min-width: 180px; text-align: right; }
+.scorecard-total strong, .scorecard-total span { display: block; }
+.scorecard-total strong { font-size: 34px; }
+.scorecard-total span { color: var(--muted); font-size: 13px; margin-top: 4px; }
+.scorecard-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+.scorecard-check { border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
+.scorecard-check strong { display: block; margin: 8px 0 5px; }
+.scorecard-check p { margin: 0; color: var(--muted); line-height: 1.45; }
+.scorecard-state { display: inline-flex; border-radius: 999px; padding: 5px 8px; font-size: 11px; font-weight: 900; text-transform: uppercase; }
+.scorecard-pass { background: #f0fdf4; border-color: #bbf7d0; }
+.scorecard-pass .scorecard-state { background: #dcfce7; color: #166534; }
+.scorecard-needs-work { background: #fffbeb; border-color: #fde68a; }
+.scorecard-needs-work .scorecard-state { background: #fef3c7; color: #92400e; }
+
 .approval-center-panel { border-left: 6px solid var(--gold); }
 .approval-status-grid, .wordpress-bridge-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
 .approval-status-grid > div, .wordpress-bridge-grid > div { border: 1px solid var(--border); border-radius: 12px; background: var(--soft); padding: 14px; }
@@ -146,6 +161,8 @@ nav a:hover { background: var(--red); }
   .editorial-queue-table { min-width: 760px; }
   .editorial-form-grid { grid-template-columns: 1fr; }
   .editorial-action-row { align-items: stretch; flex-direction: column; }
+  .scorecard-total { min-width: 0; text-align: left; }
+  .scorecard-grid { grid-template-columns: 1fr; }
   .approval-status-grid, .wordpress-bridge-grid { grid-template-columns: 1fr; }
   .approval-checklist-form button { width: 100%; }
 }
