@@ -28,14 +28,6 @@ function requireEnvironmentVariable(name: string): string {
   return value;
 }
 
-function getPublicEnvironmentVariable(name: (typeof requiredPublicDatabaseVariables)[number]): string {
-  const configured = process.env[name]?.trim();
-  if (configured) return configured;
-
-  if (name === "NEXT_PUBLIC_SUPABASE_URL") return canonicalSupabaseOrigin;
-  return canonicalSupabasePublishableKey;
-}
-
 function assertCanonicalSupabaseBinding(urlValue: string): void {
   let origin: string;
 
@@ -52,16 +44,18 @@ function assertCanonicalSupabaseBinding(urlValue: string): void {
   }
 }
 
+/**
+ * CAIOS uses one fixed non-production Supabase project. Public browser
+ * credentials are intentionally project-locked here so stale hosting values
+ * cannot silently redirect authentication to another project.
+ */
 export function getPublicDatabaseEnvironment(): PublicDatabaseEnvironment {
-  const environment = Object.fromEntries(
-    requiredPublicDatabaseVariables.map((name) => [
-      name,
-      getPublicEnvironmentVariable(name),
-    ]),
-  ) as PublicDatabaseEnvironment;
+  const environment: PublicDatabaseEnvironment = {
+    NEXT_PUBLIC_SUPABASE_URL: canonicalSupabaseOrigin,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: canonicalSupabasePublishableKey,
+  };
 
   assertCanonicalSupabaseBinding(environment.NEXT_PUBLIC_SUPABASE_URL);
-
   return environment;
 }
 
@@ -80,8 +74,7 @@ export function getServerDatabaseEnvironment(): ServerDatabaseEnvironment {
 
 export function hasDatabaseConfiguration(): boolean {
   try {
-    const environment = getPublicDatabaseEnvironment();
-    assertCanonicalSupabaseBinding(environment.NEXT_PUBLIC_SUPABASE_URL);
+    getPublicDatabaseEnvironment();
     return true;
   } catch {
     return false;
