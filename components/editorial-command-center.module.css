@@ -1,0 +1,54 @@
+.workflowGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.workflowCard {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--soft);
+  transition: border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+}
+
+.workflowCard:hover,
+.workflowCard:focus-visible {
+  border-color: var(--red);
+  box-shadow: 0 8px 20px rgba(17, 17, 17, 0.08);
+  transform: translateY(-1px);
+  outline: none;
+}
+
+.workflowCard strong {
+  display: block;
+  font-size: 30px;
+  line-height: 1;
+}
+
+.workflowCard span {
+  display: block;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.workflowCard small {
+  display: block;
+  color: var(--muted);
+  line-height: 1.3;
+}
+
+@media (max-width: 1100px) {
+  .workflowGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .workflowGrid {
+    grid-template-columns: 1fr;
+  }
+}
