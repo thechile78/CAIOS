@@ -28,8 +28,16 @@ export async function AuthenticatedEditorialQueue({
       {stories.length === 0 ? (
         <p>No active stories are available to this account.</p>
       ) : (
-        <div className="story-table-wrap">
-          <table className="story-table">
+        <div className="story-table-wrap editorial-queue-wrap">
+          <table className="story-table editorial-queue-table">
+            <colgroup>
+              <col className="queue-story-column" />
+              <col className="queue-desk-column" />
+              <col className="queue-priority-column" />
+              <col className="queue-status-column" />
+              <col className="queue-updated-column" />
+              <col className="queue-review-column" />
+            </colgroup>
             <thead>
               <tr>
                 <th>Story</th>
@@ -45,13 +53,17 @@ export async function AuthenticatedEditorialQueue({
                 <tr key={story.id}>
                   <td>
                     <strong>{story.title}</strong>
-                    {story.summary ? <small style={{ display: "block", marginTop: 4 }}>{story.summary}</small> : null}
+                    {story.summary ? <small className="queue-summary">{story.summary}</small> : null}
                   </td>
                   <td>{story.desk}</td>
                   <td>{story.priority}</td>
                   <td>{story.status.replaceAll("_", " ")}</td>
                   <td>{new Date(story.updatedAt).toLocaleString()}</td>
-                  <td><Link className="secondary-button" href={`/stories/${story.id}`}>Open intelligence</Link></td>
+                  <td>
+                    <Link className="secondary-button queue-review-button" href={`/stories/${story.id}`}>
+                      Open intelligence
+                    </Link>
+                  </td>
                 </tr>
               ))}
             </tbody>
