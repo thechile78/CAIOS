@@ -2,6 +2,9 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 const publicPaths = ["/login", "/auth/callback", "/api/health"];
+const canonicalSupabaseUrl = "https://ozucetngucaerxjziily.supabase.co";
+const canonicalSupabasePublishableKey =
+  "sb_publishable_5smX6aQLk6pBGOcL0SzV4Q_yVM8SIEd";
 
 function isPublicPath(pathname: string): boolean {
   return publicPaths.some(
@@ -10,16 +13,11 @@ function isPublicPath(pathname: string): boolean {
 }
 
 export async function proxy(request: NextRequest) {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
-
-  if (!url || !anonKey) {
-    if (isPublicPath(request.nextUrl.pathname)) {
-      return NextResponse.next();
-    }
-
-    return NextResponse.redirect(new URL("/login?error=not_configured", request.url));
-  }
+  // CAIOS is intentionally locked to the canonical staging Supabase project.
+  // Public URL and publishable keys are safe for browser/runtime use; privileged
+  // service-role credentials remain server-only environment variables.
+  const url = canonicalSupabaseUrl;
+  const anonKey = canonicalSupabasePublishableKey;
 
   let response = NextResponse.next({ request });
   const supabase = createServerClient(url, anonKey, {
