@@ -1,4 +1,6 @@
 import "./globals.css";
+import "./dashboard-v2.css";
+import "./queue-controls.css";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
