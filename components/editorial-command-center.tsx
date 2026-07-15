@@ -1,12 +1,45 @@
-import { alerts, kpis, siteHealth, stories, workflow } from "@/lib/newsroom";
+import { getNewsroomDashboardSnapshot } from "@/lib/editorial-repository";
 
-function scoreClass(score: number) {
-  if (score >= 90) return "score score-critical";
-  if (score >= 80) return "score score-high";
-  return "score";
-}
+const workflow = [
+  "Discovery",
+  "Research",
+  "Fact Check",
+  "Drafting",
+  "SEO Review",
+  "Asset Review",
+  "Human Approval",
+  "WordPress Draft",
+];
 
-export function EditorialCommandCenter() {
+export async function EditorialCommandCenter() {
+  const snapshot = await getNewsroomDashboardSnapshot();
+
+  const kpis = [
+    {
+      label: "Stories in Queue",
+      value: String(snapshot.activeStories),
+      detail: "Live authenticated count",
+    },
+    {
+      label: "High Priority",
+      value: String(snapshot.highPriorityStories),
+      detail: "Breaking and high-priority stories",
+    },
+    {
+      label: "Awaiting Approval",
+      value: String(snapshot.awaitingApproval),
+      detail: "Human review required",
+    },
+    {
+      label: "Source Health",
+      value:
+        snapshot.sourceHealthPercent === null
+          ? "No data"
+          : `${snapshot.sourceHealthPercent}%`,
+      detail: `${snapshot.verifiedSources} of ${snapshot.totalSources} sources verified`,
+    },
+  ];
+
   return (
     <>
       <section className="kpi-grid" aria-label="Newsroom key metrics">
@@ -24,39 +57,60 @@ export function EditorialCommandCenter() {
           <div className="panel-heading">
             <div>
               <p className="eyebrow">Immediate Review</p>
-              <h3>Breaking-News Alerts</h3>
+              <h3>Priority Story Alerts</h3>
             </div>
             <span className="safety-badge">Human review required</span>
           </div>
 
-          <div className="alert-list">
-            {alerts.map((alert) => (
-              <div className="alert-item" key={alert.id}>
-                <span className={`severity severity-${alert.severity.toLowerCase()}`}>{alert.severity}</span>
-                <div>
-                  <strong>{alert.title}</strong>
-                  <p>{alert.reason}</p>
+          {snapshot.priorityStories.length === 0 ? (
+            <p>No breaking or high-priority stories are currently in the authenticated queue.</p>
+          ) : (
+            <div className="alert-list">
+              {snapshot.priorityStories.map((story) => (
+                <div className="alert-item" key={story.id}>
+                  <span className={`severity severity-${story.priority === "breaking" ? "critical" : "high"}`}>
+                    {story.priority}
+                  </span>
+                  <div>
+                    <strong>{story.title}</strong>
+                    <p>
+                      {story.desk} desk · {story.status.replaceAll("_", " ")} · Updated {new Date(story.updatedAt).toLocaleString()}
+                    </p>
+                  </div>
                 </div>
-                <button type="button" className="secondary-button">Review</button>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </article>
 
         <article className="panel" id="site-health">
           <div className="panel-heading">
             <div>
               <p className="eyebrow">Operational Status</p>
-              <h3>Site Health</h3>
+              <h3>Integration Health</h3>
             </div>
           </div>
           <div className="health-list">
-            {siteHealth.map((item) => (
-              <div className="health-row" key={item.label}>
-                <span>{item.label}</span>
-                <strong className={`health-${item.tone}`}>{item.status}</strong>
-              </div>
-            ))}
+            <div className="health-row">
+              <span>Supabase Auth</span>
+              <strong className="health-good">Connected</strong>
+            </div>
+            <div className="health-row">
+              <span>Authenticated Database</span>
+              <strong className="health-good">Connected</strong>
+            </div>
+            <div className="health-row">
+              <span>WordPress Draft Dispatch</span>
+              <strong className="health-warning">Approval-gated</strong>
+            </div>
+            <div className="health-row">
+              <span>Search Console</span>
+              <strong className="health-warning">Not connected</strong>
+            </div>
+            <div className="health-row">
+              <span>Analytics</span>
+              <strong className="health-warning">Not connected</strong>
+            </div>
           </div>
         </article>
       </section>
@@ -64,38 +118,17 @@ export function EditorialCommandCenter() {
       <section className="panel" id="story-radar">
         <div className="panel-heading">
           <div>
-            <p className="eyebrow">Prioritized Intelligence</p>
-            <h3>AI Story Radar</h3>
+            <p className="eyebrow">Live Editorial State</p>
+            <h3>Newsroom Radar</h3>
           </div>
-          <span className="safety-badge">Recommendations only</span>
+          <span className="safety-badge">Authenticated database only</span>
         </div>
 
-        <div className="story-table-wrap">
-          <table className="story-table">
-            <thead>
-              <tr>
-                <th>Score</th>
-                <th>Story</th>
-                <th>Desk</th>
-                <th>Sources</th>
-                <th>Stage</th>
-                <th>Houston</th>
-              </tr>
-            </thead>
-            <tbody>
-              {stories.map((story) => (
-                <tr key={story.id}>
-                  <td><span className={scoreClass(story.score)}>{story.score}</span></td>
-                  <td><strong>{story.headline}</strong></td>
-                  <td>{story.desk}</td>
-                  <td>{story.sourceCount}</td>
-                  <td><span className="stage-pill">{story.stage}</span></td>
-                  <td>{story.houstonRelevant ? "Yes" : "No"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <p>
+          AI discovery and external-feed ingestion remain disabled until source governance,
+          duplication controls, and human-review requirements are configured. Current values
+          come only from the protected CAIOS database.
+        </p>
       </section>
 
       <section className="panel" id="editorial-queue">
@@ -121,9 +154,12 @@ export function EditorialCommandCenter() {
         <div>
           <p className="eyebrow">Final Editorial Authority</p>
           <h3>Approval Queue</h3>
-          <p>Four stories are awaiting review. WordPress draft creation remains blocked until all verification, image-rights, SEO, and human-approval gates are complete.</p>
+          <p>
+            {snapshot.awaitingApproval === 0
+              ? "No stories are currently awaiting approval. WordPress draft creation remains blocked until a story completes verification, image-rights, SEO, and human-approval gates."
+              : `${snapshot.awaitingApproval} ${snapshot.awaitingApproval === 1 ? "story is" : "stories are"} awaiting human approval. No story can create a WordPress draft until all required gates are complete.`}
+          </p>
         </div>
-        <button type="button" className="primary-button">Open Approval Queue</button>
       </section>
     </>
   );
