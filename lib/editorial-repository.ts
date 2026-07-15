@@ -21,6 +21,14 @@ export interface EditorialQueueStory {
   updatedAt: string;
 }
 
+export interface EditorialQueueFilters {
+  status?: string | null;
+  query?: string | null;
+  desk?: string | null;
+  priority?: string | null;
+  sort?: string | null;
+}
+
 export interface WorkflowCount {
   status: string;
   label: string;
@@ -51,32 +59,52 @@ const workflowStages = [
   ["approved", "Approved"],
 ] as const;
 
+const allowedPriorities = new Set(["breaking", "high", "normal", "low"]);
+const allowedSorts = new Set(["updated_desc", "updated_asc", "priority", "title"]);
+
 export function roleCanCreateStory(role: AppRole): boolean {
   return editableRoles.includes(role);
 }
 
 export async function listEditorialQueueStories(
-  limit = 25,
-  status?: string | null,
+  limit = 50,
+  filters: EditorialQueueFilters = {},
 ): Promise<EditorialQueueStory[]> {
   const safeLimit = Math.min(Math.max(Math.trunc(limit), 1), 100);
   const supabase = await createSupabaseServerClient();
-  let query = supabase
+  let request = supabase
     .from("stories")
     .select("id,title,desk,priority,status,summary,owner_id,updated_at")
     .neq("status", "archived")
-    .order("updated_at", { ascending: false })
     .limit(safeLimit);
 
-  if (status && workflowStages.some(([value]) => value === status)) {
-    query = query.eq("status", status);
+  if (filters.status && workflowStages.some(([value]) => value === filters.status)) {
+    request = request.eq("status", filters.status);
   }
 
-  const { data, error } = await query;
-
-  if (error) {
-    throw new Error("Unable to load the authenticated editorial queue.");
+  const normalizedQuery = filters.query?.trim().slice(0, 100);
+  if (normalizedQuery) {
+    const escaped = normalizedQuery.replaceAll(",", " ");
+    request = request.or(`title.ilike.%${escaped}%,summary.ilike.%${escaped}%`);
   }
+
+  const normalizedDesk = filters.desk?.trim().slice(0, 60);
+  if (normalizedDesk) {
+    request = request.eq("desk", normalizedDesk);
+  }
+
+  if (filters.priority && allowedPriorities.has(filters.priority)) {
+    request = request.eq("priority", filters.priority);
+  }
+
+  const sort = filters.sort && allowedSorts.has(filters.sort) ? filters.sort : "updated_desc";
+  if (sort === "updated_asc") request = request.order("updated_at", { ascending: true });
+  else if (sort === "title") request = request.order("title", { ascending: true });
+  else if (sort === "priority") request = request.order("priority", { ascending: true }).order("updated_at", { ascending: false });
+  else request = request.order("updated_at", { ascending: false });
+
+  const { data, error } = await request;
+  if (error) throw new Error("Unable to load the authenticated editorial queue.");
 
   return (data ?? []).map((story) => ({
     id: story.id,
@@ -92,7 +120,6 @@ export async function listEditorialQueueStories(
 
 export async function getNewsroomDashboardSnapshot(): Promise<NewsroomDashboardSnapshot> {
   const supabase = await createSupabaseServerClient();
-
   const workflowRequests = workflowStages.map(([status]) =>
     supabase.from("stories").select("id", { count: "exact", head: true }).eq("status", status),
   );
@@ -119,39 +146,33 @@ export async function getNewsroomDashboardSnapshot(): Promise<NewsroomDashboardS
     ...workflowRequests,
   ]);
 
-  // Dashboard metrics are observational. A denied or temporarily unavailable
-  // optional query must never take down the authenticated newsroom homepage.
-  const safeCount = (result: { count: number | null; error: unknown }) =>
-    result.error ? 0 : (result.count ?? 0);
-
-  const totalSources = safeCount(totalSourcesResult);
-  const verifiedSources = safeCount(verifiedSourcesResult);
+  const countOrZero = (result: { count: number | null; error: unknown }) => result.error ? 0 : result.count ?? 0;
+  const totalSources = countOrZero(totalSourcesResult);
+  const verifiedSources = countOrZero(verifiedSourcesResult);
 
   return {
-    activeStories: safeCount(activeResult),
-    highPriorityStories: safeCount(highPriorityResult),
-    awaitingApproval: safeCount(awaitingApprovalResult),
+    activeStories: countOrZero(activeResult),
+    highPriorityStories: countOrZero(highPriorityResult),
+    awaitingApproval: countOrZero(awaitingApprovalResult),
     totalSources,
     verifiedSources,
     sourceHealthPercent: totalSources > 0 ? Math.round((verifiedSources / totalSources) * 100) : null,
-    wordpressDrafts: safeCount(wordpressDraftsResult),
-    publishedStories: safeCount(publishedStoriesResult),
+    wordpressDrafts: countOrZero(wordpressDraftsResult),
+    publishedStories: countOrZero(publishedStoriesResult),
     workflowCounts: workflowStages.map(([status, label], index) => ({
       status,
       label,
-      count: workflowResults[index]?.error ? 0 : (workflowResults[index]?.count ?? 0),
+      count: countOrZero(workflowResults[index] ?? { count: 0, error: true }),
     })),
-    priorityStories: priorityStoriesResult.error
-      ? []
-      : (priorityStoriesResult.data ?? []).map((story) => ({
-          id: story.id,
-          title: story.title,
-          desk: story.desk,
-          priority: story.priority,
-          status: story.status,
-          summary: story.summary,
-          ownerId: story.owner_id,
-          updatedAt: story.updated_at,
-        })),
+    priorityStories: priorityStoriesResult.error ? [] : (priorityStoriesResult.data ?? []).map((story) => ({
+      id: story.id,
+      title: story.title,
+      desk: story.desk,
+      priority: story.priority,
+      status: story.status,
+      summary: story.summary,
+      ownerId: story.owner_id,
+      updatedAt: story.updated_at,
+    })),
   };
 }
