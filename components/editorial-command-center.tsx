@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { getNewsroomDashboardSnapshot } from "@/lib/editorial-repository";
+import styles from "./editorial-command-center.module.css";
 
 export async function EditorialCommandCenter() {
   const snapshot = await getNewsroomDashboardSnapshot();
@@ -28,10 +29,10 @@ export async function EditorialCommandCenter() {
           </div>
           <span className="safety-badge">Live authenticated metrics</span>
         </div>
-        <div className="workflow-filter-grid">
+        <div className={styles.workflowGrid}>
           {snapshot.workflowCounts.map((stage) => (
             <Link
-              className="workflow-filter-card"
+              className={styles.workflowCard}
               href={`/?status=${stage.status}#authenticated-editorial-queue`}
               key={stage.status}
             >
