@@ -64,7 +64,7 @@ nav a:hover { background: var(--red); }
 .health-good { color: #166534; }
 .health-warning { color: #92400e; }
 
-.story-table-wrap { overflow-x: auto; }
+.story-table-wrap { width: 100%; max-width: 100%; overflow-x: auto; padding-bottom: 4px; }
 .story-table { width: 100%; border-collapse: collapse; min-width: 760px; }
 .story-table th { background: var(--black); color: white; text-align: left; padding: 12px; }
 .story-table td { border-bottom: 1px solid var(--border); padding: 13px 12px; vertical-align: top; }
@@ -73,16 +73,18 @@ nav a:hover { background: var(--red); }
 .score-critical { background: #fee2e2; color: #991b1b; }
 .stage-pill { display: inline-flex; border-radius: 999px; padding: 6px 9px; background: #e0f2fe; color: #075985; font-size: 12px; font-weight: 800; }
 
-.editorial-queue-table { table-layout: fixed; min-width: 1040px; }
+.editorial-queue-table { table-layout: fixed; min-width: 960px; }
 .editorial-queue-table .queue-story-column { width: auto; }
-.editorial-queue-table .queue-desk-column { width: 110px; }
-.editorial-queue-table .queue-priority-column { width: 90px; }
-.editorial-queue-table .queue-status-column { width: 110px; }
-.editorial-queue-table .queue-updated-column { width: 130px; }
-.editorial-queue-table .queue-review-column { width: 170px; }
+.editorial-queue-table .queue-desk-column { width: 90px; }
+.editorial-queue-table .queue-priority-column { width: 80px; }
+.editorial-queue-table .queue-status-column { width: 95px; }
+.editorial-queue-table .queue-updated-column { width: 115px; }
+.editorial-queue-table .queue-review-column { width: 155px; }
 .editorial-queue-table td:first-child { overflow-wrap: anywhere; }
+.editorial-queue-table th:last-child,
+.editorial-queue-table td:last-child { padding-left: 10px; padding-right: 10px; }
 .queue-summary { display: block; margin-top: 4px; color: var(--muted); line-height: 1.35; }
-.queue-review-button { display: inline-flex; align-items: center; justify-content: center; min-width: 145px; white-space: nowrap; }
+.queue-review-button { display: flex; width: 100%; min-width: 0; align-items: center; justify-content: center; padding: 10px 8px; white-space: nowrap; }
 
 .workflow-track { list-style: none; display: grid; grid-template-columns: repeat(8, minmax(120px, 1fr)); gap: 10px; padding: 0; margin: 0; overflow-x: auto; }
 .workflow-track li { border: 1px solid var(--border); border-radius: 12px; padding: 12px; background: #f9fafb; min-height: 88px; }
@@ -113,5 +115,5 @@ nav a:hover { background: var(--red); }
   .kpi-grid { grid-template-columns: 1fr; }
   .alert-item { grid-template-columns: 1fr; }
   .panel-heading { flex-direction: column; }
-  .editorial-queue-table { min-width: 940px; }
+  .editorial-queue-table { min-width: 900px; }
 }
