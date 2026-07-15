@@ -1,0 +1,49 @@
+name: Release readiness
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment to validate
+        required: true
+        default: staging
+        type: choice
+        options:
+          - staging
+          - production
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - name: Validate launch environment
+        run: node scripts/validate-launch-env.mjs "${{ inputs.environment }}"
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          CAIOS_WORDPRESS_DRAFT_OUTBOX_ENABLED: ${{ vars.CAIOS_WORDPRESS_DRAFT_OUTBOX_ENABLED }}
+          CAIOS_WORDPRESS_DRAFT_DISPATCH_ENABLED: ${{ vars.CAIOS_WORDPRESS_DRAFT_DISPATCH_ENABLED }}
+          CAIOS_WORDPRESS_DRY_RUN: ${{ vars.CAIOS_WORDPRESS_DRY_RUN }}
+          CAIOS_WORDPRESS_URL: ${{ secrets.CAIOS_WORDPRESS_URL }}
+          CAIOS_WORDPRESS_USERNAME: ${{ secrets.CAIOS_WORDPRESS_USERNAME }}
+          CAIOS_WORDPRESS_APPLICATION_PASSWORD: ${{ secrets.CAIOS_WORDPRESS_APPLICATION_PASSWORD }}
+          CAIOS_ALLOW_AUTOMATIC_PUBLISH: "false"
+      - name: Smoke test deployed environment
+        if: ${{ vars.CAIOS_BASE_URL != '' }}
+        run: node scripts/smoke-test.mjs
+        env:
+          CAIOS_BASE_URL: ${{ vars.CAIOS_BASE_URL }}
