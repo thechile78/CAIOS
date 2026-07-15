@@ -20,14 +20,22 @@ interface CommandCenterPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
+function stringParam(value: string | string[] | undefined): string | null {
+  return typeof value === "string" ? value : null;
+}
+
 export default async function CommandCenterPage({ searchParams }: CommandCenterPageProps) {
   const profile = await requireCurrentProfile();
   const params = await searchParams;
-  const discovery = typeof params.discovery === "string" ? params.discovery : null;
-  const created = typeof params.created === "string" ? params.created : "0";
-  const duplicates = typeof params.duplicates === "string" ? params.duplicates : "0";
-  const errors = typeof params.errors === "string" ? params.errors : "0";
-  const status = typeof params.status === "string" ? params.status : null;
+  const discovery = stringParam(params.discovery);
+  const created = stringParam(params.created) ?? "0";
+  const duplicates = stringParam(params.duplicates) ?? "0";
+  const errors = stringParam(params.errors) ?? "0";
+  const status = stringParam(params.status);
+  const query = stringParam(params.q);
+  const desk = stringParam(params.desk);
+  const priority = stringParam(params.priority);
+  const sort = stringParam(params.sort);
 
   return (
     <main className="shell">
@@ -62,7 +70,14 @@ export default async function CommandCenterPage({ searchParams }: CommandCenterP
         </header>
 
         <EditorialCommandCenter />
-        <AuthenticatedEditorialQueue role={profile.role} status={status} />
+        <AuthenticatedEditorialQueue
+          role={profile.role}
+          status={status}
+          query={query}
+          desk={desk}
+          priority={priority}
+          sort={sort}
+        />
 
         <section className="panel" id="news-discovery">
           <div className="panel-heading">
