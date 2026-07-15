@@ -33,9 +33,11 @@ export async function getStoryIntelligence(storyId: string) {
     .single();
   if (error || !story) return null;
 
-  const [{ data: sources }, { data: candidates }] = await Promise.all([
+  const [{ data: sources }, { data: candidates }, { data: checklist }, { data: approvals }] = await Promise.all([
     supabase.from("story_sources").select("id,url,publisher,title,reliability,verified,created_at").eq("story_id", storyId).order("created_at", { ascending: false }),
     supabase.from("stories").select("id,title,desk,status,updated_at").neq("id", storyId).neq("status", "archived").limit(100),
+    supabase.from("editorial_checklists").select("story_id,sources_verified,facts_verified,rights_reviewed,seo_reviewed,human_approved,updated_at").eq("story_id", storyId).maybeSingle(),
+    supabase.from("approvals").select("id,decision,note,created_at").eq("story_id", storyId).order("created_at", { ascending: false }).limit(10),
   ]);
 
   const title = story.title as string;
@@ -43,7 +45,7 @@ export async function getStoryIntelligence(storyId: string) {
   const combined = `${title} ${summary ?? ""}`.toLowerCase();
   const houstonRelevant = /\bhouston\b|\bharris county\b|\btexas\b|\bkaty\b|\bpasadena\b|\bsugar land\b|\bthe woodlands\b/.test(combined) || String(story.desk).toLowerCase() === "houston";
   const urgencyTerms = /breaking|dead|dies|emergency|evacuat|warning|recall|outbreak|shooting|crash|hurricane|tornado|flood|arrest|lawsuit|announces|unveil|launch/.test(combined);
-  const recommendedPriority = urgencyTerms && houstonRelevant ? "high" : urgencyTerms ? "high" : "normal";
+  const recommendedPriority = urgencyTerms ? "high" : "normal";
   const sourceList = sources ?? [];
   const verifiedCount = sourceList.filter((source) => source.verified).length;
   const confidence = sourceList.length === 0 ? 20 : Math.min(95, 45 + sourceList.length * 12 + verifiedCount * 15);
@@ -56,6 +58,8 @@ export async function getStoryIntelligence(storyId: string) {
   return {
     story,
     sources: sourceList,
+    checklist: checklist ?? null,
+    approvals: approvals ?? [],
     briefing: sentence(summary, title),
     whyItMatters: houstonRelevant
       ? "This has direct Houston or Texas relevance and may merit local editorial attention."
