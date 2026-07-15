@@ -1,48 +1,49 @@
-import { getNewsroomDashboardSnapshot } from "@/lib/editorial-repository";
+import Link from "next/link";
 
-const workflow = [
-  "Discovery",
-  "Research",
-  "Fact Check",
-  "Drafting",
-  "SEO Review",
-  "Asset Review",
-  "Human Approval",
-  "WordPress Draft",
-];
+import { getNewsroomDashboardSnapshot } from "@/lib/editorial-repository";
 
 export async function EditorialCommandCenter() {
   const snapshot = await getNewsroomDashboardSnapshot();
 
   const kpis = [
-    {
-      label: "Stories in Queue",
-      value: String(snapshot.activeStories),
-      detail: "Live authenticated count",
-    },
-    {
-      label: "High Priority",
-      value: String(snapshot.highPriorityStories),
-      detail: "Breaking and high-priority stories",
-    },
-    {
-      label: "Awaiting Approval",
-      value: String(snapshot.awaitingApproval),
-      detail: "Human review required",
-    },
+    { label: "Stories in Queue", value: String(snapshot.activeStories), detail: "All non-archived stories" },
+    { label: "High Priority", value: String(snapshot.highPriorityStories), detail: "Breaking and high priority" },
+    { label: "Awaiting Approval", value: String(snapshot.awaitingApproval), detail: "Human decision required" },
+    { label: "WordPress Drafts", value: String(snapshot.wordpressDrafts), detail: "Successfully dispatched drafts" },
+    { label: "Published", value: String(snapshot.publishedStories), detail: "Stories marked published" },
     {
       label: "Source Health",
-      value:
-        snapshot.sourceHealthPercent === null
-          ? "No data"
-          : `${snapshot.sourceHealthPercent}%`,
+      value: snapshot.sourceHealthPercent === null ? "No data" : `${snapshot.sourceHealthPercent}%`,
       detail: `${snapshot.verifiedSources} of ${snapshot.totalSources} sources verified`,
     },
   ];
 
   return (
     <>
-      <section className="kpi-grid" aria-label="Newsroom key metrics">
+      <section className="panel newsroom-v2-panel" id="story-radar">
+        <div className="panel-heading">
+          <div>
+            <p className="eyebrow">Newsroom Dashboard v2</p>
+            <h3>Workflow Command Center</h3>
+          </div>
+          <span className="safety-badge">Live authenticated metrics</span>
+        </div>
+        <div className="workflow-filter-grid">
+          {snapshot.workflowCounts.map((stage) => (
+            <Link
+              className="workflow-filter-card"
+              href={`/?status=${stage.status}#authenticated-editorial-queue`}
+              key={stage.status}
+            >
+              <strong>{stage.count}</strong>
+              <span>{stage.label}</span>
+              <small>Open filtered queue</small>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <section className="kpi-grid newsroom-kpi-grid" aria-label="Newsroom key metrics">
         {kpis.map((item) => (
           <article className="kpi-card" key={item.label}>
             <span>{item.label}</span>
@@ -61,7 +62,6 @@ export async function EditorialCommandCenter() {
             </div>
             <span className="safety-badge">Human review required</span>
           </div>
-
           {snapshot.priorityStories.length === 0 ? (
             <p>No breaking or high-priority stories are currently in the authenticated queue.</p>
           ) : (
@@ -73,10 +73,9 @@ export async function EditorialCommandCenter() {
                   </span>
                   <div>
                     <strong>{story.title}</strong>
-                    <p>
-                      {story.desk} desk · {story.status.replaceAll("_", " ")} · Updated {new Date(story.updatedAt).toLocaleString()}
-                    </p>
+                    <p>{story.desk} desk · {story.status.replaceAll("_", " ")} · Updated {new Date(story.updatedAt).toLocaleString()}</p>
                   </div>
+                  <Link className="secondary-button" href={`/stories/${story.id}`}>Review</Link>
                 </div>
               ))}
             </div>
@@ -84,70 +83,16 @@ export async function EditorialCommandCenter() {
         </article>
 
         <article className="panel" id="site-health">
-          <div className="panel-heading">
-            <div>
-              <p className="eyebrow">Operational Status</p>
-              <h3>Integration Health</h3>
-            </div>
-          </div>
+          <div className="panel-heading"><div><p className="eyebrow">Operational Status</p><h3>Integration Health</h3></div></div>
           <div className="health-list">
-            <div className="health-row">
-              <span>Supabase Auth</span>
-              <strong className="health-good">Connected</strong>
-            </div>
-            <div className="health-row">
-              <span>Authenticated Database</span>
-              <strong className="health-good">Connected</strong>
-            </div>
-            <div className="health-row">
-              <span>WordPress Draft Dispatch</span>
-              <strong className="health-warning">Approval-gated</strong>
-            </div>
-            <div className="health-row">
-              <span>Search Console</span>
-              <strong className="health-warning">Not connected</strong>
-            </div>
-            <div className="health-row">
-              <span>Analytics</span>
-              <strong className="health-warning">Not connected</strong>
-            </div>
+            <div className="health-row"><span>Supabase Auth</span><strong className="health-good">Connected</strong></div>
+            <div className="health-row"><span>Authenticated Database</span><strong className="health-good">Connected</strong></div>
+            <div className="health-row"><span>Discovery Engine</span><strong className="health-good">Manual ready</strong></div>
+            <div className="health-row"><span>WordPress Draft Dispatch</span><strong className="health-warning">Approval-gated</strong></div>
+            <div className="health-row"><span>Search Console</span><strong className="health-warning">Not connected</strong></div>
+            <div className="health-row"><span>Analytics</span><strong className="health-warning">Not connected</strong></div>
           </div>
         </article>
-      </section>
-
-      <section className="panel" id="story-radar">
-        <div className="panel-heading">
-          <div>
-            <p className="eyebrow">Live Editorial State</p>
-            <h3>Newsroom Radar</h3>
-          </div>
-          <span className="safety-badge">Authenticated database only</span>
-        </div>
-
-        <p>
-          AI discovery and external-feed ingestion remain disabled until source governance,
-          duplication controls, and human-review requirements are configured. Current values
-          come only from the protected CAIOS database.
-        </p>
-      </section>
-
-      <section className="panel" id="editorial-queue">
-        <div className="panel-heading">
-          <div>
-            <p className="eyebrow">Mandatory Control Path</p>
-            <h3>Editorial Workflow</h3>
-          </div>
-          <span className="safety-badge safety-strong">No auto-publish</span>
-        </div>
-
-        <ol className="workflow-track">
-          {workflow.map((stage, index) => (
-            <li className={stage === "Human Approval" ? "approval-stage" : ""} key={stage}>
-              <span>{index + 1}</span>
-              <strong>{stage}</strong>
-            </li>
-          ))}
-        </ol>
       </section>
 
       <section className="panel approval-panel" id="approval-queue">
@@ -156,10 +101,11 @@ export async function EditorialCommandCenter() {
           <h3>Approval Queue</h3>
           <p>
             {snapshot.awaitingApproval === 0
-              ? "No stories are currently awaiting approval. WordPress draft creation remains blocked until a story completes verification, image-rights, SEO, and human-approval gates."
-              : `${snapshot.awaitingApproval} ${snapshot.awaitingApproval === 1 ? "story is" : "stories are"} awaiting human approval. No story can create a WordPress draft until all required gates are complete.`}
+              ? "No stories are currently awaiting approval. WordPress draft creation remains blocked until all editorial gates and human approval are complete."
+              : `${snapshot.awaitingApproval} ${snapshot.awaitingApproval === 1 ? "story is" : "stories are"} awaiting human approval.`}
           </p>
         </div>
+        <Link className="primary-button" href="/?status=awaiting_approval#authenticated-editorial-queue">Open approval queue</Link>
       </section>
     </>
   );
