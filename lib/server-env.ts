@@ -5,6 +5,9 @@ const requiredPublicDatabaseVariables = [
 
 const requiredServerDatabaseVariables = ["SUPABASE_SERVICE_ROLE_KEY"] as const;
 
+const canonicalSupabaseProjectRef = "ozucetngucaerxjziily";
+const canonicalSupabaseOrigin = `https://${canonicalSupabaseProjectRef}.supabase.co`;
+
 type PublicDatabaseEnvironment = Record<
   (typeof requiredPublicDatabaseVariables)[number],
   string
@@ -23,13 +26,33 @@ function requireEnvironmentVariable(name: string): string {
   return value;
 }
 
+function assertCanonicalSupabaseBinding(urlValue: string): void {
+  let origin: string;
+
+  try {
+    origin = new URL(urlValue).origin;
+  } catch {
+    throw new Error("NEXT_PUBLIC_SUPABASE_URL must be a valid HTTPS URL");
+  }
+
+  if (origin !== canonicalSupabaseOrigin) {
+    throw new Error(
+      `Unsafe Supabase project binding. Expected ${canonicalSupabaseOrigin}, received ${origin}.`,
+    );
+  }
+}
+
 export function getPublicDatabaseEnvironment(): PublicDatabaseEnvironment {
-  return Object.fromEntries(
+  const environment = Object.fromEntries(
     requiredPublicDatabaseVariables.map((name) => [
       name,
       requireEnvironmentVariable(name),
     ]),
   ) as PublicDatabaseEnvironment;
+
+  assertCanonicalSupabaseBinding(environment.NEXT_PUBLIC_SUPABASE_URL);
+
+  return environment;
 }
 
 /**
@@ -46,7 +69,18 @@ export function getServerDatabaseEnvironment(): ServerDatabaseEnvironment {
 }
 
 export function hasDatabaseConfiguration(): boolean {
-  return requiredPublicDatabaseVariables.every(
-    (name) => Boolean(process.env[name]?.trim()),
-  );
+  if (
+    !requiredPublicDatabaseVariables.every(
+      (name) => Boolean(process.env[name]?.trim()),
+    )
+  ) {
+    return false;
+  }
+
+  try {
+    assertCanonicalSupabaseBinding(process.env.NEXT_PUBLIC_SUPABASE_URL!.trim());
+    return true;
+  } catch {
+    return false;
+  }
 }
