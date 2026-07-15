@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import type { AppRole } from "@/lib/auth";
 import {
   listEditorialQueueStories,
@@ -26,8 +28,8 @@ export async function AuthenticatedEditorialQueue({
       {stories.length === 0 ? (
         <p>No active stories are available to this account.</p>
       ) : (
-        <div className="table-wrap">
-          <table>
+        <div className="story-table-wrap">
+          <table className="story-table">
             <thead>
               <tr>
                 <th>Story</th>
@@ -35,6 +37,7 @@ export async function AuthenticatedEditorialQueue({
                 <th>Priority</th>
                 <th>Status</th>
                 <th>Updated</th>
+                <th>Review</th>
               </tr>
             </thead>
             <tbody>
@@ -42,12 +45,13 @@ export async function AuthenticatedEditorialQueue({
                 <tr key={story.id}>
                   <td>
                     <strong>{story.title}</strong>
-                    {story.summary ? <small>{story.summary}</small> : null}
+                    {story.summary ? <small style={{ display: "block", marginTop: 4 }}>{story.summary}</small> : null}
                   </td>
                   <td>{story.desk}</td>
                   <td>{story.priority}</td>
                   <td>{story.status.replaceAll("_", " ")}</td>
                   <td>{new Date(story.updatedAt).toLocaleString()}</td>
+                  <td><Link className="secondary-button" href={`/stories/${story.id}`}>Open intelligence</Link></td>
                 </tr>
               ))}
             </tbody>
@@ -57,7 +61,7 @@ export async function AuthenticatedEditorialQueue({
 
       <p>
         {roleCanCreateStory(role)
-          ? "Story creation will be enabled only after the validated write path is reviewed."
+          ? "Story intelligence is review-only. Status changes remain gated behind the validated editorial write path."
           : "Your role has read-only access to this queue."}
       </p>
     </section>
