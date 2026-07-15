@@ -1,3 +1,7 @@
+import { redirect } from "next/navigation";
+
+import { hasDatabaseConfiguration } from "@/lib/server-env";
+
 import { signIn } from "./actions";
 
 const messages: Record<string, string> = {
@@ -13,11 +17,17 @@ interface LoginPageProps {
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const params = await searchParams;
-  const message = params.error ? messages[params.error] : undefined;
   const nextPath =
     params.next?.startsWith("/") && !params.next.startsWith("//")
       ? params.next
       : "/";
+
+  if (params.error === "not_configured" && hasDatabaseConfiguration()) {
+    const cleanUrl = nextPath === "/" ? "/login" : `/login?next=${encodeURIComponent(nextPath)}`;
+    redirect(cleanUrl);
+  }
+
+  const message = params.error ? messages[params.error] : undefined;
 
   return (
     <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: "2rem" }}>
