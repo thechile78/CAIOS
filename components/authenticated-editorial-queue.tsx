@@ -8,12 +8,15 @@ import {
 
 interface AuthenticatedEditorialQueueProps {
   role: AppRole;
+  status?: string | null;
 }
 
 export async function AuthenticatedEditorialQueue({
   role,
+  status,
 }: AuthenticatedEditorialQueueProps) {
-  const stories = await listEditorialQueueStories();
+  const stories = await listEditorialQueueStories(50, status);
+  const filterLabel = status ? status.replaceAll("_", " ") : "all active stages";
 
   return (
     <section id="authenticated-editorial-queue" className="panel">
@@ -21,12 +24,16 @@ export async function AuthenticatedEditorialQueue({
         <div>
           <p className="eyebrow">Authenticated data</p>
           <h3>Editorial Queue</h3>
+          <small>Showing {filterLabel}</small>
         </div>
-        <span>{stories.length} active stories</span>
+        <div className="queue-heading-actions">
+          <span>{stories.length} stories</span>
+          {status ? <Link className="secondary-button" href="/#authenticated-editorial-queue">Clear filter</Link> : null}
+        </div>
       </div>
 
       {stories.length === 0 ? (
-        <p>No active stories are available to this account.</p>
+        <p>No stories are available for this workflow stage.</p>
       ) : (
         <div className="story-table-wrap editorial-queue-wrap">
           <table className="story-table editorial-queue-table">
