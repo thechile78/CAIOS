@@ -9,13 +9,22 @@ import {
 interface AuthenticatedEditorialQueueProps {
   role: AppRole;
   status?: string | null;
+  query?: string | null;
+  desk?: string | null;
+  priority?: string | null;
+  sort?: string | null;
 }
 
 export async function AuthenticatedEditorialQueue({
   role,
   status,
+  query,
+  desk,
+  priority,
+  sort,
 }: AuthenticatedEditorialQueueProps) {
-  const stories = await listEditorialQueueStories(50, status);
+  const stories = await listEditorialQueueStories(50, { status, query, desk, priority, sort });
+  const hasFilters = Boolean(status || query || desk || priority || (sort && sort !== "updated_desc"));
   const filterLabel = status ? status.replaceAll("_", " ") : "all active stages";
 
   return (
@@ -28,12 +37,44 @@ export async function AuthenticatedEditorialQueue({
         </div>
         <div className="queue-heading-actions">
           <span>{stories.length} stories</span>
-          {status ? <Link className="secondary-button" href="/#authenticated-editorial-queue">Clear filter</Link> : null}
+          {hasFilters ? <Link className="secondary-button" href="/#authenticated-editorial-queue">Clear filters</Link> : null}
         </div>
       </div>
 
+      <form className="queue-filter-form" method="get" action="/">
+        <label>
+          Search
+          <input name="q" type="search" defaultValue={query ?? ""} placeholder="Headline or summary" maxLength={100} />
+        </label>
+        <label>
+          Desk
+          <input name="desk" defaultValue={desk ?? ""} placeholder="Houston, Rock…" maxLength={60} />
+        </label>
+        <label>
+          Priority
+          <select name="priority" defaultValue={priority ?? ""}>
+            <option value="">All priorities</option>
+            <option value="breaking">Breaking</option>
+            <option value="high">High</option>
+            <option value="normal">Normal</option>
+            <option value="low">Low</option>
+          </select>
+        </label>
+        <label>
+          Sort
+          <select name="sort" defaultValue={sort ?? "updated_desc"}>
+            <option value="updated_desc">Newest updated</option>
+            <option value="updated_asc">Oldest updated</option>
+            <option value="priority">Priority</option>
+            <option value="title">Headline A–Z</option>
+          </select>
+        </label>
+        {status ? <input type="hidden" name="status" value={status} /> : null}
+        <button className="primary-button queue-filter-submit" type="submit">Apply filters</button>
+      </form>
+
       {stories.length === 0 ? (
-        <p>No stories are available for this workflow stage.</p>
+        <p>No stories match the current queue filters.</p>
       ) : (
         <div className="story-table-wrap editorial-queue-wrap">
           <table className="story-table editorial-queue-table">
@@ -76,7 +117,7 @@ export async function AuthenticatedEditorialQueue({
 
       <p>
         {roleCanCreateStory(role)
-          ? "Story intelligence is review-only. Status changes remain gated behind the validated editorial write path."
+          ? "Queue controls are view-only. Story changes remain gated behind the validated editorial write path."
           : "Your role has read-only access to this queue."}
       </p>
     </section>
