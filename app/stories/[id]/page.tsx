@@ -3,13 +3,20 @@ import { notFound } from "next/navigation";
 
 import { requireCurrentProfile, roleCanEdit } from "@/lib/auth";
 import { getStoryIntelligence } from "@/lib/story-intelligence";
+import { getWordPressDraftBridgeState } from "@/lib/wordpress-draft-bridge";
 import { saveStoryEditorialAction } from "./actions";
+import { prepareWordPressDraftIntentAction } from "./wordpress-actions";
 
 export const dynamic = "force-dynamic";
 
 interface StoryPageProps {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ editorial_error?: string; editorial_saved?: string }>;
+  searchParams: Promise<{
+    editorial_error?: string;
+    editorial_saved?: string;
+    wordpress_error?: string;
+    wordpress_prepared?: string;
+  }>;
 }
 
 export default async function StoryIntelligencePage({ params, searchParams }: StoryPageProps) {
@@ -19,8 +26,10 @@ export default async function StoryIntelligencePage({ params, searchParams }: St
   const intelligence = await getStoryIntelligence(id);
   if (!intelligence) notFound();
 
+  const bridge = await getWordPressDraftBridgeState(id);
   const { story, sources, similarStories } = intelligence;
   const editable = roleCanEdit(profile.role) && ["discovered", "researching"].includes(String(story.status));
+  const canPrepareWordPress = ["administrator", "editor"].includes(profile.role) && story.status === "approved";
   const errorMessage = notices.editorial_error === "conflict"
     ? "This story changed after the page loaded. Reload before saving so another editor’s work is not overwritten."
     : notices.editorial_error
@@ -31,6 +40,15 @@ export default async function StoryIntelligencePage({ params, searchParams }: St
       ? "Changes saved and the story moved into research review."
       : "Editorial changes saved."
     : null;
+  const wordpressErrorMessage = notices.wordpress_error === "not_approved"
+    ? "This story is not approved. Complete the editorial checklist and approval workflow before preparing a WordPress draft."
+    : notices.wordpress_error === "checklist"
+      ? "The approved editorial checklist is incomplete."
+      : notices.wordpress_error === "approval"
+        ? "The matching human approval record is missing."
+        : notices.wordpress_error
+          ? "The WordPress draft intent could not be prepared. No external WordPress request was made."
+          : null;
 
   return (
     <main className="content story-workspace">
@@ -43,6 +61,8 @@ export default async function StoryIntelligencePage({ params, searchParams }: St
 
       {errorMessage ? <div className="editorial-notice editorial-notice-error" role="alert">{errorMessage}</div> : null}
       {savedMessage ? <div className="editorial-notice editorial-notice-success" role="status">{savedMessage}</div> : null}
+      {wordpressErrorMessage ? <div className="editorial-notice editorial-notice-error" role="alert">{wordpressErrorMessage}</div> : null}
+      {notices.wordpress_prepared ? <div className="editorial-notice editorial-notice-success" role="status">The immutable package and WordPress draft intent are prepared. No external WordPress request has been made.</div> : null}
 
       <section className="kpi-grid">
         <article className="kpi-card"><span>Confidence</span><strong>{intelligence.confidence}%</strong><small>Source-based heuristic, not a factual guarantee</small></article>
@@ -74,6 +94,29 @@ export default async function StoryIntelligencePage({ params, searchParams }: St
             <p className="editorial-form-note">Every update uses optimistic concurrency and the database audit function. Approval, WordPress drafting, and publishing remain unavailable here.</p>
           </form>
         ) : <p>This record is read-only for your role or current workflow stage.</p>}
+      </section>
+
+      <section className="panel wordpress-bridge-panel">
+        <div className="panel-heading">
+          <div><p className="eyebrow">Approval-gated delivery</p><h3>WordPress Draft Bridge</h3></div>
+          <span className="safety-badge safety-strong">Draft only</span>
+        </div>
+        <div className="wordpress-bridge-grid">
+          <div><strong>Approval status</strong><span>{story.status === "approved" ? "Approved" : "Not approved"}</span></div>
+          <div><strong>Handoff</strong><span>{bridge.handoff?.state ?? "Not created"}</span></div>
+          <div><strong>Immutable package</strong><span>{bridge.editorialPackage ? `Version ${bridge.editorialPackage.version}` : "Not created"}</span></div>
+          <div><strong>Draft outbox</strong><span>{bridge.outbox?.state ?? "Not queued"}</span></div>
+        </div>
+        {bridge.outbox?.lastError ? <p className="editorial-notice editorial-notice-error">Last dispatch error: {bridge.outbox.lastError}</p> : null}
+        {bridge.outbox?.externalPostUrl ? <p><a className="secondary-button" href={bridge.outbox.externalPostUrl} target="_blank" rel="noreferrer">Open WordPress draft</a></p> : null}
+        {canPrepareWordPress && !bridge.outbox ? (
+          <form action={prepareWordPressDraftIntentAction}>
+            <input type="hidden" name="storyId" value={story.id} />
+            <button className="primary-button" type="submit">Prepare WordPress draft intent</button>
+          </form>
+        ) : null}
+        {!canPrepareWordPress && !bridge.outbox ? <p>Available only after the story is fully approved by an administrator or editor. Preparing the intent does not contact WordPress.</p> : null}
+        {bridge.outbox ? <p>The draft intent is recorded in the audited outbox. External dispatch remains disabled until WordPress credentials and an explicit dispatch control are configured.</p> : null}
       </section>
 
       <section className="dashboard-grid">
