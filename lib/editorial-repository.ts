@@ -21,6 +21,12 @@ export interface EditorialQueueStory {
   updatedAt: string;
 }
 
+export interface WorkflowCount {
+  status: string;
+  label: string;
+  count: number;
+}
+
 export interface NewsroomDashboardSnapshot {
   activeStories: number;
   highPriorityStories: number;
@@ -29,7 +35,21 @@ export interface NewsroomDashboardSnapshot {
   totalSources: number;
   sourceHealthPercent: number | null;
   priorityStories: EditorialQueueStory[];
+  workflowCounts: WorkflowCount[];
+  wordpressDrafts: number;
+  publishedStories: number;
 }
+
+const workflowStages = [
+  ["discovered", "Discovery"],
+  ["researching", "Research"],
+  ["fact_check", "Fact Check"],
+  ["drafting", "Drafting"],
+  ["seo_review", "SEO Review"],
+  ["asset_review", "Asset Review"],
+  ["awaiting_approval", "Awaiting Approval"],
+  ["approved", "Approved"],
+] as const;
 
 export function roleCanCreateStory(role: AppRole): boolean {
   return editableRoles.includes(role);
@@ -37,15 +57,22 @@ export function roleCanCreateStory(role: AppRole): boolean {
 
 export async function listEditorialQueueStories(
   limit = 25,
+  status?: string | null,
 ): Promise<EditorialQueueStory[]> {
   const safeLimit = Math.min(Math.max(Math.trunc(limit), 1), 100);
   const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("stories")
     .select("id,title,desk,priority,status,summary,owner_id,updated_at")
     .neq("status", "archived")
     .order("updated_at", { ascending: false })
     .limit(safeLimit);
+
+  if (status && workflowStages.some(([value]) => value === status)) {
+    query = query.eq("status", status);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     throw new Error("Unable to load the authenticated editorial queue.");
@@ -66,6 +93,10 @@ export async function listEditorialQueueStories(
 export async function getNewsroomDashboardSnapshot(): Promise<NewsroomDashboardSnapshot> {
   const supabase = await createSupabaseServerClient();
 
+  const workflowRequests = workflowStages.map(([status]) =>
+    supabase.from("stories").select("id", { count: "exact", head: true }).eq("status", status),
+  );
+
   const [
     activeResult,
     highPriorityResult,
@@ -73,29 +104,19 @@ export async function getNewsroomDashboardSnapshot(): Promise<NewsroomDashboardS
     totalSourcesResult,
     verifiedSourcesResult,
     priorityStoriesResult,
+    wordpressDraftsResult,
+    publishedStoriesResult,
+    ...workflowResults
   ] = await Promise.all([
     supabase.from("stories").select("id", { count: "exact", head: true }).neq("status", "archived"),
-    supabase
-      .from("stories")
-      .select("id", { count: "exact", head: true })
-      .neq("status", "archived")
-      .in("priority", ["breaking", "high"]),
-    supabase
-      .from("stories")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "awaiting_approval"),
+    supabase.from("stories").select("id", { count: "exact", head: true }).neq("status", "archived").in("priority", ["breaking", "high"]),
+    supabase.from("stories").select("id", { count: "exact", head: true }).eq("status", "awaiting_approval"),
     supabase.from("story_sources").select("id", { count: "exact", head: true }),
-    supabase
-      .from("story_sources")
-      .select("id", { count: "exact", head: true })
-      .eq("verified", true),
-    supabase
-      .from("stories")
-      .select("id,title,desk,priority,status,summary,owner_id,updated_at")
-      .neq("status", "archived")
-      .in("priority", ["breaking", "high"])
-      .order("updated_at", { ascending: false })
-      .limit(5),
+    supabase.from("story_sources").select("id", { count: "exact", head: true }).eq("verified", true),
+    supabase.from("stories").select("id,title,desk,priority,status,summary,owner_id,updated_at").neq("status", "archived").in("priority", ["breaking", "high"]).order("updated_at", { ascending: false }).limit(5),
+    supabase.from("wordpress_draft_outbox").select("id", { count: "exact", head: true }).eq("state", "dispatched"),
+    supabase.from("stories").select("id", { count: "exact", head: true }).eq("status", "published"),
+    ...workflowRequests,
   ]);
 
   const failures = [
@@ -105,6 +126,9 @@ export async function getNewsroomDashboardSnapshot(): Promise<NewsroomDashboardS
     totalSourcesResult.error,
     verifiedSourcesResult.error,
     priorityStoriesResult.error,
+    wordpressDraftsResult.error,
+    publishedStoriesResult.error,
+    ...workflowResults.map((result) => result.error),
   ].filter(Boolean);
 
   if (failures.length > 0) {
@@ -120,8 +144,14 @@ export async function getNewsroomDashboardSnapshot(): Promise<NewsroomDashboardS
     awaitingApproval: awaitingApprovalResult.count ?? 0,
     totalSources,
     verifiedSources,
-    sourceHealthPercent:
-      totalSources > 0 ? Math.round((verifiedSources / totalSources) * 100) : null,
+    sourceHealthPercent: totalSources > 0 ? Math.round((verifiedSources / totalSources) * 100) : null,
+    wordpressDrafts: wordpressDraftsResult.count ?? 0,
+    publishedStories: publishedStoriesResult.count ?? 0,
+    workflowCounts: workflowStages.map(([status, label], index) => ({
+      status,
+      label,
+      count: workflowResults[index]?.count ?? 0,
+    })),
     priorityStories: (priorityStoriesResult.data ?? []).map((story) => ({
       id: story.id,
       title: story.title,
