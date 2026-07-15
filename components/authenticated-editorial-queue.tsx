@@ -36,7 +36,6 @@ export async function AuthenticatedEditorialQueue({
               <col className="queue-priority-column" />
               <col className="queue-status-column" />
               <col className="queue-updated-column" />
-              <col className="queue-review-column" />
             </colgroup>
             <thead>
               <tr>
@@ -45,7 +44,6 @@ export async function AuthenticatedEditorialQueue({
                 <th>Priority</th>
                 <th>Status</th>
                 <th>Updated</th>
-                <th>Review</th>
               </tr>
             </thead>
             <tbody>
@@ -54,16 +52,14 @@ export async function AuthenticatedEditorialQueue({
                   <td>
                     <strong>{story.title}</strong>
                     {story.summary ? <small className="queue-summary">{story.summary}</small> : null}
+                    <Link className="secondary-button queue-inline-review" href={`/stories/${story.id}`}>
+                      Review story
+                    </Link>
                   </td>
                   <td>{story.desk}</td>
                   <td>{story.priority}</td>
                   <td>{story.status.replaceAll("_", " ")}</td>
                   <td>{new Date(story.updatedAt).toLocaleString()}</td>
-                  <td>
-                    <Link className="secondary-button queue-review-button" href={`/stories/${story.id}`}>
-                      Open intelligence
-                    </Link>
-                  </td>
                 </tr>
               ))}
             </tbody>
