@@ -8,7 +8,15 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const editableRoles = ["administrator", "editor", "producer", "researcher"] as const;
 const priorities = new Set(["breaking", "high", "normal", "low"]);
-const allowedTargets = new Set(["discovered", "researching"]);
+const allowedTargets = new Set([
+  "discovered",
+  "researching",
+  "fact_check",
+  "drafting",
+  "seo_review",
+  "asset_review",
+  "awaiting_approval",
+]);
 
 function value(formData: FormData, key: string): string {
   return String(formData.get(key) ?? "").trim();
@@ -43,9 +51,12 @@ export async function saveStoryEditorialAction(formData: FormData) {
   });
 
   if (error) {
-    const code = error.message.toLowerCase().includes("stale") || error.message.toLowerCase().includes("updated")
+    const normalized = error.message.toLowerCase();
+    const code = normalized.includes("stale") || normalized.includes("changed")
       ? "conflict"
-      : "save_failed";
+      : normalized.includes("transition")
+        ? "invalid_transition"
+        : "save_failed";
     redirect(`/stories/${storyId}?editorial_error=${code}`);
   }
 
