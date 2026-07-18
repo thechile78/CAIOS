@@ -1,0 +1,19 @@
+{
+  "version": "1.0.0",
+  "approvalRequired": true,
+  "autoPublish": false,
+  "profiles": {
+    "instagram_reel": {"width":1080,"height":1920,"maxSeconds":90,"videoBitrate":"8M","audioLufs":-14,"safeTop":250,"safeBottom":320},
+    "instagram_story": {"width":1080,"height":1920,"maxSeconds":30,"videoBitrate":"8M","audioLufs":-14,"safeTop":250,"safeBottom":320},
+    "instagram_feed": {"width":1080,"height":1350,"maxSeconds":60,"videoBitrate":"8M","audioLufs":-14,"safeTop":100,"safeBottom":140},
+    "facebook_reel": {"width":1080,"height":1920,"maxSeconds":90,"videoBitrate":"8M","audioLufs":-14,"safeTop":250,"safeBottom":320},
+    "facebook_feed": {"width":1080,"height":1350,"maxSeconds":120,"videoBitrate":"8M","audioLufs":-14,"safeTop":100,"safeBottom":140},
+    "tiktok": {"width":1080,"height":1920,"maxSeconds":90,"videoBitrate":"8M","audioLufs":-14,"safeTop":220,"safeBottom":360},
+    "youtube_shorts": {"width":1080,"height":1920,"maxSeconds":60,"videoBitrate":"10M","audioLufs":-14,"safeTop":180,"safeBottom":260},
+    "x_video": {"width":1280,"height":720,"maxSeconds":140,"videoBitrate":"8M","audioLufs":-14,"safeTop":60,"safeBottom":80},
+    "linkedin_video": {"width":1080,"height":1350,"maxSeconds":180,"videoBitrate":"8M","audioLufs":-14,"safeTop":100,"safeBottom":140},
+    "pinterest_video": {"width":1080,"height":1920,"maxSeconds":60,"videoBitrate":"8M","audioLufs":-14,"safeTop":180,"safeBottom":300},
+    "snapchat_spotlight": {"width":1080,"height":1920,"maxSeconds":60,"videoBitrate":"8M","audioLufs":-14,"safeTop":220,"safeBottom":340},
+    "threads_video": {"width":1080,"height":1350,"maxSeconds":60,"videoBitrate":"8M","audioLufs":-14,"safeTop":100,"safeBottom":140}
+  }
+}

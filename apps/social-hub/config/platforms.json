@@ -1,0 +1,15 @@
+{
+  "version": "1.0",
+  "publishMode": "approval_required",
+  "automaticPublishing": false,
+  "platforms": [
+    {"id":"wordpress","enabled":true,"auth":"official_connector","minimumScopes":["read","create_draft","publish_after_approval"]},
+    {"id":"youtube","enabled":true,"auth":"oauth2","minimumScopes":["upload","read_own_channel"]},
+    {"id":"facebook_pages","enabled":true,"auth":"oauth2","minimumScopes":["pages_show_list","pages_read_engagement","pages_manage_posts"]},
+    {"id":"instagram_business","enabled":true,"auth":"oauth2_via_meta","minimumScopes":["instagram_basic","instagram_content_publish"]},
+    {"id":"threads","enabled":false,"auth":"oauth2","minimumScopes":[]},
+    {"id":"linkedin","enabled":false,"auth":"oauth2","minimumScopes":[]},
+    {"id":"x","enabled":false,"auth":"oauth2","minimumScopes":[]},
+    {"id":"tiktok","enabled":false,"auth":"oauth2","minimumScopes":[]}
+  ]
+}
