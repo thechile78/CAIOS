@@ -1,0 +1,25 @@
+{
+  "policyVersion": "1.0",
+  "finalApprover": "the_chile",
+  "approvalRequired": true,
+  "allowAutoPublish": false,
+  "requiredChecks": [
+    "video_integrity",
+    "audio_integrity",
+    "copyright_attestation",
+    "brand_profile_match",
+    "caption_review",
+    "link_validation",
+    "platform_format",
+    "safe_zone_check"
+  ],
+  "blockedWithoutApproval": [
+    "publish_now",
+    "schedule_publish",
+    "cross_post",
+    "replace_live_post"
+  ],
+  "approvalRecord": {
+    "requiredFields": ["content_id","approver","approved_at","platforms","content_hash"]
+  }
+}
