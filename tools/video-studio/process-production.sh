@@ -27,18 +27,22 @@ mapfile -t clips < <(find "$CLIPS_DIR" -maxdepth 1 -type f \( -iname '*.mp4' -o 
 for i in "${!clips[@]}"; do
   n=$(printf '%03d' "$i")
   normalized="$OUT/work/clip-$n.mp4"
+  duration=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "${clips[$i]}")
+  fade_out=$(awk -v d="$duration" 'BEGIN { s=d-0.18; if (s<0) s=0; printf "%.3f", s }')
   ffmpeg -hide_banner -loglevel error -y -i "${clips[$i]}" \
-    -an -vf "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,fade=t=in:st=0:d=.18,fade=t=out:st=max(0\,duration-.18):d=.18,fps=30" \
+    -an -vf "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,fade=t=in:st=0:d=.18,fade=t=out:st=${fade_out}:d=.18,fps=30" \
     -c:v libx264 -preset medium -crf 20 -pix_fmt yuv420p "$normalized"
   printf "file '%s'\n" "$(realpath "$normalized")" >> "$OUT/work/concat.txt"
 done
 
 silent="$OUT/work/master-silent.mp4"
 ffmpeg -hide_banner -loglevel error -y -f concat -safe 0 -i "$OUT/work/concat.txt" -c copy "$silent"
+master_duration=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$silent")
+music_fade_out=$(awk -v d="$master_duration" 'BEGIN { s=d-0.8; if (s<0) s=0; printf "%.3f", s }')
 master="$OUT/work/master-music.mp4"
 ffmpeg -hide_banner -loglevel error -y -i "$silent" -stream_loop -1 -i "$MUSIC" \
   -map 0:v:0 -map 1:a:0 -shortest -c:v copy -c:a aac -b:a 192k \
-  -af "afade=t=in:st=0:d=.5,afade=t=out:st=1:d=.8,loudnorm=I=-14:LRA=11:TP=-1.5" \
+  -af "afade=t=in:st=0:d=.5,afade=t=out:st=${music_fade_out}:d=.8,loudnorm=I=-14:LRA=11:TP=-1.5" \
   -movflags +faststart "$master"
 
 render(){ name="$1"; w="$2"; h="$3"; seconds="$4"; vf="scale=${w}:${h}:force_original_aspect_ratio=increase,crop=${w}:${h}";
