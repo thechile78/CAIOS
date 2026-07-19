@@ -44,7 +44,7 @@ test("Meta identity verification is hard-bound to Chilemaniacs and its Business 
   const oauth = await read("lib/meta-oauth.ts");
   assert.match(oauth, /1214069685123391/);
   assert.match(oauth, /Chilemaniacs/);
-  assert.match(oauth, /27490136290650142/);
+  assert.match(oauth, /17841403279084160/);
   assert.match(oauth, /thechilepromotions/);
   assert.match(oauth, /\|\| "BUSINESS"/);
   assert.match(oauth, /targetPage\.name !== environment\.expectedPageName/);

@@ -28,7 +28,7 @@ export function getMetaOAuthEnvironment() {
     graphVersion: process.env.META_GRAPH_API_VERSION?.trim() || "v21.0",
     expectedPageId: process.env.META_FACEBOOK_PAGE_ID?.trim() || "1214069685123391",
     expectedPageName: process.env.META_FACEBOOK_PAGE_NAME?.trim() || "Chilemaniacs",
-    expectedInstagramId: process.env.META_INSTAGRAM_ACCOUNT_ID?.trim() || "27490136290650142",
+    expectedInstagramId: process.env.META_INSTAGRAM_ACCOUNT_ID?.trim() || "17841403279084160",
     expectedInstagramUsername:
       process.env.META_INSTAGRAM_USERNAME?.trim().replace(/^@/, "") || "thechilepromotions",
     expectedInstagramAccountType:

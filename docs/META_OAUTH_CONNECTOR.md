@@ -5,7 +5,7 @@ CAIOS links one approved Facebook Page and its linked Instagram Business account
 ## Approved identities
 
 - Facebook Page: `Chilemaniacs` (`1214069685123391`)
-- Instagram Business: `@thechilepromotions` (`27490136290650142`)
+- Instagram Business: `@thechilepromotions` (`17841403279084160`)
 
 The callback verifies those values from Meta's server response. It also requires the Instagram `account_type` to be `BUSINESS`; a Creator account fails closed until it is converted or an administrator deliberately changes the expected account type.
 
