@@ -48,6 +48,8 @@ test("Meta identity verification is hard-bound to Chilemaniacs and its Business 
   assert.match(oauth, /thechilepromotions/);
   assert.match(oauth, /\|\| "BUSINESS"/);
   assert.match(oauth, /targetPage\.name !== environment\.expectedPageName/);
+  assert.match(oauth, /selectedPageUrl/);
+  assert.match(oauth, /const readAccessToken = targetPage\.access_token \|\| tokens\.access_token/);
   assert.match(oauth, /verifiedInstagram\.id !== environment\.expectedInstagramId/);
   assert.match(oauth, /accountType !== environment\.expectedInstagramAccountType/);
 });

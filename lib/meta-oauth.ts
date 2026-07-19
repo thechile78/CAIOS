@@ -204,9 +204,23 @@ export async function verifyMetaAccounts(tokens: MetaTokenResponse): Promise<Ver
     accountsUrl = accounts.paging?.next ? validatedPagingUrl(accounts.paging.next) : null;
   }
 
-  if (!targetPage || targetPage.name !== environment.expectedPageName || !targetPage.access_token) {
+  if (!targetPage) {
+    const selectedPageUrl = new URL(`${graphBase}/${encodeURIComponent(environment.expectedPageId)}`);
+    selectedPageUrl.searchParams.set("fields", "id,name,instagram_business_account{id,username,account_type}");
+    try {
+      targetPage = await graphJson<PageAccount>(selectedPageUrl, tokens.access_token);
+    } catch {
+      throw new Error(`The authorized Meta user does not control the expected Page: ${environment.expectedPageName} (${environment.expectedPageId}).`);
+    }
+  }
+
+  if (!targetPage) {
     throw new Error(`The authorized Meta user does not control the expected Page: ${environment.expectedPageName} (${environment.expectedPageId}).`);
   }
+  if (targetPage.name !== environment.expectedPageName) {
+    throw new Error(`Meta returned the expected Page ID with the wrong name: ${targetPage.name || "unnamed"}.`);
+  }
+  const readAccessToken = targetPage.access_token || tokens.access_token;
   const instagram = targetPage.instagram_business_account;
   if (!instagram) throw new Error("Chilemaniacs does not expose a linked Instagram professional account through Meta.");
 
@@ -214,7 +228,7 @@ export async function verifyMetaAccounts(tokens: MetaTokenResponse): Promise<Ver
   if (!instagram.username || !instagram.account_type) {
     const instagramUrl = new URL(`${graphBase}/${encodeURIComponent(instagram.id)}`);
     instagramUrl.searchParams.set("fields", "id,username,account_type");
-    verifiedInstagram = await graphJson<InstagramAccount>(instagramUrl, targetPage.access_token);
+    verifiedInstagram = await graphJson<InstagramAccount>(instagramUrl, readAccessToken);
   }
   const username = verifiedInstagram.username?.replace(/^@/, "") ?? "";
   const accountType = verifiedInstagram.account_type?.toUpperCase() ?? "";
@@ -228,7 +242,7 @@ export async function verifyMetaAccounts(tokens: MetaTokenResponse): Promise<Ver
   return {
     page: { id: targetPage.id, name: targetPage.name },
     instagram: { id: verifiedInstagram.id, username, accountType },
-    pageAccessToken: targetPage.access_token,
+    pageAccessToken: readAccessToken,
     expiresIn: tokens.expires_in ?? null,
     scopes: [...REQUIRED_META_SCOPES],
   };
