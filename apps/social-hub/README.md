@@ -1,5 +1,7 @@
 # CAIOS Social Hub
 
+> **Prototype warning:** `apps/social-hub/schema/social-hub.sql` is a non-deployable design artifact. It contains future-state publish-job concepts that are intentionally absent from `supabase/migrations/`. Never apply that file to a database. Only reviewed files under `supabase/migrations/` are deployable.
+
 CAIOS Social Hub is the approval-first publishing control plane for CAIOS Media Studio.
 
 ## Non-negotiable safety rules

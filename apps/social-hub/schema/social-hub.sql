@@ -100,3 +100,7 @@ drop trigger if exists publish_job_requires_approval on publish_jobs;
 create trigger publish_job_requires_approval
 before insert or update of content_item_id on publish_jobs
 for each row execute function enforce_approved_publish_job();
+-- NON-DEPLOYABLE PROTOTYPE. DO NOT APPLY TO SUPABASE OR ANY OTHER DATABASE.
+-- Only reviewed files under /supabase/migrations are deployable. This design
+-- artifact contains future-state publish-job concepts that are intentionally
+-- absent from the live CAIOS approval-only workflow.
