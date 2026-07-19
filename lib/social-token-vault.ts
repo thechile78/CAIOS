@@ -18,6 +18,18 @@ function encryptionKey(): Buffer {
   return key;
 }
 
+function vaultHeaders(serviceRoleKey: string, prefer?: string): Record<string, string> {
+  const headers: Record<string, string> = {
+    apikey: serviceRoleKey,
+    "content-type": "application/json",
+    ...(prefer ? { prefer } : {}),
+  };
+  if (!serviceRoleKey.startsWith("sb_secret_")) {
+    headers.authorization = `Bearer ${serviceRoleKey}`;
+  }
+  return headers;
+}
+
 export function encryptSecret(value: string): string {
   const iv = randomBytes(12);
   const cipher = createCipheriv("aes-256-gcm", encryptionKey(), iv);
@@ -42,12 +54,7 @@ export async function storeYoutubeConnection(input: StoreYoutubeConnectionInput)
   const serviceRoleKey = environment.SUPABASE_SERVICE_ROLE_KEY;
   const response = await fetch(`${supabaseUrl}/rest/v1/social_oauth_connections?on_conflict=provider,provider_account_id`, {
     method: "POST",
-    headers: {
-      apikey: serviceRoleKey,
-      authorization: `Bearer ${serviceRoleKey}`,
-      "content-type": "application/json",
-      prefer: "resolution=merge-duplicates,return=minimal",
-    },
+    headers: vaultHeaders(serviceRoleKey, "resolution=merge-duplicates,return=minimal"),
     body: JSON.stringify({
       provider: "youtube",
       provider_account_id: input.channelId,
@@ -74,15 +81,6 @@ interface StoreMetaConnectionsInput {
   pageAccessToken: string;
   expiresIn: number | null;
   scopes: string[];
-}
-
-function vaultHeaders(serviceRoleKey: string, prefer?: string): Record<string, string> {
-  return {
-    apikey: serviceRoleKey,
-    authorization: `Bearer ${serviceRoleKey}`,
-    "content-type": "application/json",
-    ...(prefer ? { prefer } : {}),
-  };
 }
 
 export async function storeMetaConnections(input: StoreMetaConnectionsInput): Promise<void> {
