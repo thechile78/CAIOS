@@ -13,6 +13,7 @@ const modules = [
   ["Site Health", "#site-health"],
   ["Approval Queue", "#approval-queue"],
   ["Social Accounts", "/integrations/meta"],
+  ["Social Drafts", "/social-drafts"],
 ];
 
 export const dynamic = "force-dynamic";
