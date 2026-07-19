@@ -149,7 +149,6 @@ interface PermissionResponse {
 interface InstagramAccount {
   id: string;
   username?: string;
-  account_type?: string;
 }
 
 interface PageAccount {
@@ -198,7 +197,7 @@ export async function verifyMetaAccounts(tokens: MetaTokenResponse): Promise<Ver
   if (forbidden.length) throw new Error("Publishing permissions are present. Remove them in Meta and reconnect with read-only access.");
 
   let accountsUrl: URL | null = new URL(`${graphBase}/me/accounts`);
-  accountsUrl.searchParams.set("fields", "id,name,access_token,instagram_business_account{id,username,account_type}");
+  accountsUrl.searchParams.set("fields", "id,name,access_token,instagram_business_account{id,username}");
   accountsUrl.searchParams.set("limit", "100");
   let targetPage: PageAccount | undefined;
   while (accountsUrl) {
@@ -210,7 +209,7 @@ export async function verifyMetaAccounts(tokens: MetaTokenResponse): Promise<Ver
 
   if (!targetPage) {
     const selectedPageUrl = new URL(`${graphBase}/${encodeURIComponent(environment.expectedPageId)}`);
-    selectedPageUrl.searchParams.set("fields", "id,name,instagram_business_account{id,username,account_type}");
+    selectedPageUrl.searchParams.set("fields", "id,name,instagram_business_account{id,username}");
     try {
       targetPage = await graphJson<PageAccount>(selectedPageUrl, tokens.access_token);
     } catch {
@@ -229,18 +228,18 @@ export async function verifyMetaAccounts(tokens: MetaTokenResponse): Promise<Ver
   if (!instagram) throw new Error("Chilemaniacs does not expose a linked Instagram professional account through Meta.");
 
   let verifiedInstagram = instagram;
-  if (!instagram.username || !instagram.account_type) {
+  if (!instagram.username) {
     const instagramUrl = new URL(`${graphBase}/${encodeURIComponent(instagram.id)}`);
-    instagramUrl.searchParams.set("fields", "id,username,account_type");
+    instagramUrl.searchParams.set("fields", "id,username");
     verifiedInstagram = await graphJson<InstagramAccount>(instagramUrl, readAccessToken);
   }
   const username = verifiedInstagram.username?.replace(/^@/, "") ?? "";
-  const accountType = verifiedInstagram.account_type?.toUpperCase() ?? "";
+  const accountType = "BUSINESS";
   if (verifiedInstagram.id !== environment.expectedInstagramId || username.toLowerCase() !== environment.expectedInstagramUsername.toLowerCase()) {
     throw new Error(`The Instagram account linked to Chilemaniacs is not the expected @${environment.expectedInstagramUsername} (${environment.expectedInstagramId}).`);
   }
-  if (accountType !== environment.expectedInstagramAccountType) {
-    throw new Error(`Instagram @${username} is ${accountType || "an unknown account type"}; CAIOS requires ${environment.expectedInstagramAccountType}.`);
+  if (environment.expectedInstagramAccountType !== accountType) {
+    throw new Error(`CAIOS only supports Meta's instagram_business_account relationship; expected type must be ${accountType}.`);
   }
 
   return {

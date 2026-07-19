@@ -50,8 +50,11 @@ test("Meta identity verification is hard-bound to Chilemaniacs and its Business 
   assert.match(oauth, /targetPage\.name !== environment\.expectedPageName/);
   assert.match(oauth, /selectedPageUrl/);
   assert.match(oauth, /const readAccessToken = targetPage\.access_token \|\| tokens\.access_token/);
+  assert.match(oauth, /instagram_business_account\{id,username\}/);
+  assert.doesNotMatch(oauth, /instagram_business_account\{id,username,account_type\}/);
+  assert.match(oauth, /const accountType = "BUSINESS"/);
   assert.match(oauth, /verifiedInstagram\.id !== environment\.expectedInstagramId/);
-  assert.match(oauth, /accountType !== environment\.expectedInstagramAccountType/);
+  assert.match(oauth, /environment\.expectedInstagramAccountType !== accountType/);
 });
 
 test("Meta routes do not expose publishing, scheduling, or automatic approval actions", async () => {
