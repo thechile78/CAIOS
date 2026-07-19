@@ -12,6 +12,7 @@ const modules = [
   ["Priority Alerts", "#breaking-news"],
   ["Site Health", "#site-health"],
   ["Approval Queue", "#approval-queue"],
+  ["Social Accounts", "/integrations/meta"],
 ];
 
 export const dynamic = "force-dynamic";
