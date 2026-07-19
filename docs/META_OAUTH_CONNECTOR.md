@@ -12,7 +12,7 @@ The callback verifies those values from Meta's server response. It also requires
 ## Meta app configuration
 
 1. Create or select the CAIOS Meta app and configure Facebook Login for Business.
-2. Add the exact valid OAuth redirect URI `https://caios.vercel.app/api/integrations/meta/callback`.
+2. Add the exact valid OAuth redirect URI `https://caios.vercel.app/api/integrations/meta/callback`. CAIOS hard-locks this URI in server code; it is not environment-configurable.
 3. Configure the server-only environment variables listed in `.env.example`.
 4. Generate independent, high-entropy values for `META_OAUTH_STATE_SECRET` and the base64-encoded 32-byte `SOCIAL_TOKEN_ENCRYPTION_KEY`.
 5. Apply the Supabase migration before connecting.

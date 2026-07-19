@@ -4,6 +4,7 @@ import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
 const REQUIRED_META_SCOPES = ["pages_show_list", "pages_read_engagement", "instagram_basic"] as const;
 const FORBIDDEN_META_SCOPES = ["pages_manage_posts", "instagram_content_publish"] as const;
+const META_REDIRECT_URI = "https://caios.vercel.app/api/integrations/meta/callback";
 
 export const META_SCOPES = REQUIRED_META_SCOPES;
 
@@ -24,9 +25,6 @@ export function getMetaOAuthEnvironment() {
     appSecret: requireVariable("META_APP_SECRET"),
     stateSecret,
     graphVersion: process.env.META_GRAPH_API_VERSION?.trim() || "v21.0",
-    redirectUri:
-      process.env.META_OAUTH_REDIRECT_URI?.trim() ||
-      "https://caios.vercel.app/api/integrations/meta/callback",
     expectedPageId: process.env.META_FACEBOOK_PAGE_ID?.trim() || "1214069685123391",
     expectedPageName: process.env.META_FACEBOOK_PAGE_NAME?.trim() || "Chilemaniacs",
     expectedInstagramId: process.env.META_INSTAGRAM_ACCOUNT_ID?.trim() || "27490136290650142",
@@ -55,7 +53,7 @@ export function createMetaOAuthState(userId: string): string {
     nonce: randomBytes(32).toString("base64url"),
     userId,
     provider: "meta",
-    redirectUri: environment.redirectUri,
+    redirectUri: META_REDIRECT_URI,
     expiresAt: Date.now() + 10 * 60 * 1000,
   };
   const encoded = Buffer.from(JSON.stringify(payload)).toString("base64url");
@@ -84,7 +82,7 @@ export function verifyMetaOAuthState(state: string, userId: string): OAuthStateP
   if (
     payload.provider !== "meta" ||
     payload.userId !== userId ||
-    payload.redirectUri !== environment.redirectUri ||
+    payload.redirectUri !== META_REDIRECT_URI ||
     !payload.nonce ||
     !Number.isFinite(payload.expiresAt) ||
     payload.expiresAt < Date.now()
@@ -98,7 +96,7 @@ export function buildMetaAuthorizationUrl(state: string): string {
   const environment = getMetaOAuthEnvironment();
   const url = new URL(`https://www.facebook.com/${environment.graphVersion}/dialog/oauth`);
   url.searchParams.set("client_id", environment.appId);
-  url.searchParams.set("redirect_uri", environment.redirectUri);
+  url.searchParams.set("redirect_uri", META_REDIRECT_URI);
   url.searchParams.set("response_type", "code");
   url.searchParams.set("scope", REQUIRED_META_SCOPES.join(","));
   url.searchParams.set("state", state);
@@ -129,7 +127,7 @@ export async function exchangeMetaAuthorizationCode(code: string): Promise<MetaT
     body: new URLSearchParams({
       client_id: environment.appId,
       client_secret: environment.appSecret,
-      redirect_uri: environment.redirectUri,
+      redirect_uri: META_REDIRECT_URI,
       code,
     }),
     cache: "no-store",

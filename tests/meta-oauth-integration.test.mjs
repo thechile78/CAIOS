@@ -25,7 +25,9 @@ test("OAuth state is signed, administrator-bound, redirect-bound, expiring, and 
   assert.match(oauth, /createHmac\("sha256"/);
   assert.match(oauth, /timingSafeEqual/);
   assert.match(oauth, /payload\.userId !== userId/);
-  assert.match(oauth, /payload\.redirectUri !== environment\.redirectUri/);
+  assert.match(oauth, /payload\.redirectUri !== META_REDIRECT_URI/);
+  assert.match(oauth, /const META_REDIRECT_URI = "https:\/\/caios\.vercel\.app\/api\/integrations\/meta\/callback"/);
+  assert.doesNotMatch(oauth, /process\.env\.META_OAUTH_REDIRECT_URI/);
   assert.match(oauth, /payload\.expiresAt < Date\.now\(\)/);
   assert.match(connect, /roleCanAdminister/);
   assert.match(connect, /httpOnly: true/);
