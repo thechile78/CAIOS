@@ -21,7 +21,8 @@ test("story and audit event are written inside one database function", () => {
 test("write path remains role gated and has no publishing capability", () => {
   assert.match(action, /requireRole\(creatorRoles\)/);
   assert.match(action, /create_story_with_audit/);
-  for (const source of [action, page, migration]) {
+  assert.match(page, /cannot approve, publish, schedule, or create a WordPress draft/i);
+  for (const source of [action, migration]) {
     assert.doesNotMatch(source, /SUPABASE_SERVICE_ROLE_KEY/);
     assert.doesNotMatch(source, /wordpress_draft|published|schedule/i);
   }

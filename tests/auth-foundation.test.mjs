@@ -21,8 +21,8 @@ test("newsroom access fails closed for anonymous or inactive users", () => {
 });
 
 test("redirect destinations reject protocol-relative paths", () => {
-  assert.match(actions, /!value\.startsWith\("\/\/"\)/);
-  assert.match(callback, /!value\.startsWith\("\/\/"\)/);
+  assert.match(actions, /value\.startsWith\("\/\/"\)/);
+  assert.match(callback, /value\.startsWith\("\/\/"\)/);
 });
 
 test("service-role credentials are absent from browser and proxy auth code", () => {

@@ -29,5 +29,5 @@ test("only newsroom editing roles are eligible for future creation", () => {
 
 test("command center requires an active profile before loading queue", () => {
   assert.match(page, /requireCurrentProfile/);
-  assert.match(page, /AuthenticatedEditorialQueue role=\{profile\.role\}/);
+  assert.match(page, /AuthenticatedEditorialQueue[\s\S]*?role=\{profile\.role\}/);
 });

@@ -72,6 +72,7 @@ export default async function MetaIntegrationPage({ searchParams }: MetaIntegrat
           <a className="primary-button" href="/api/integrations/meta/connect">
             {correctlyLinked ? "Reverify Meta accounts" : "Connect Meta securely"}
           </a>
+          {correctlyLinked ? <p><Link href="/social-drafts">Open private social drafts</Link></p> : null}
           <p><Link href="/">Return to the command center</Link></p>
         </section>
       </section>

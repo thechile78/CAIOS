@@ -22,9 +22,10 @@ test("OAuth state remains server validated and short lived", () => {
   assert.match(callback, /state !== expectedState/);
 });
 
-test("acceptance test does not upload or persist tokens", () => {
+test("connection does not upload and stores tokens only through the encrypted server vault", () => {
   assert.doesNotMatch(callback, /videos\.insert|uploadType|resumable/i);
   assert.doesNotMatch(callback, /\.from\(|insert\(|upsert\(/);
-  assert.match(page, /Tokens are not persisted/);
+  assert.match(callback, /storeYoutubeConnection/);
+  assert.match(page, /Encrypted token vault/);
   assert.match(page, /explicit approval remains required/);
 });
