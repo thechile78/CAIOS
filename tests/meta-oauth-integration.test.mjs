@@ -88,6 +88,8 @@ test("token summaries never select ciphertext and Meta writes force every safegu
   assert.match(vault, /auto_approval_enabled: false/);
   assert.match(vault, /approval_required: true/);
   assert.match(vault, /getServerDatabaseEnvironment/);
+  assert.match(vault, /!serviceRoleKey\.startsWith\("sb_secret_"\)/);
+  assert.match(vault, /headers\.authorization = `Bearer \$\{serviceRoleKey\}`/);
 });
 
 test("database locks read-only Meta connections and browser roles out of the vault", async () => {
