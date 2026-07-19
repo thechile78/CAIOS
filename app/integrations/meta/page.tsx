@@ -24,7 +24,7 @@ export default async function MetaIntegrationPage({ searchParams }: MetaIntegrat
     connections.length === 2 &&
     facebook?.providerAccountId === "1214069685123391" &&
     facebook.accountName === "Chilemaniacs" &&
-    instagram?.providerAccountId === "27490136290650142" &&
+    instagram?.providerAccountId === "17841403279084160" &&
     String(instagram.metadata.account_type).toUpperCase() === "BUSINESS" &&
     connections.every(
       (connection) =>
@@ -55,7 +55,7 @@ export default async function MetaIntegrationPage({ searchParams }: MetaIntegrat
 
           {error ? <p role="alert"><strong>Connection error:</strong> {error}</p> : null}
           <p><strong>Facebook Page:</strong> {correctlyLinked ? facebook?.accountName : "Chilemaniacs"} — {correctlyLinked ? facebook?.providerAccountId : "1214069685123391"}</p>
-          <p><strong>Instagram Business:</strong> {correctlyLinked ? instagram?.accountName : "@thechilepromotions"} — {correctlyLinked ? instagram?.providerAccountId : "27490136290650142"}</p>
+          <p><strong>Instagram Business:</strong> {correctlyLinked ? instagram?.accountName : "@thechilepromotions"} — {correctlyLinked ? instagram?.providerAccountId : "17841403279084160"}</p>
           <p><strong>Status:</strong> {correctlyLinked ? "Verified through the Meta Graph API" : "Not yet verified and stored in CAIOS"}</p>
           {correctlyLinked ? <p><strong>Granted scopes:</strong> {facebook?.scopes.join(", ")}</p> : null}
 
