@@ -10,6 +10,8 @@ test("Meta OAuth requests read/linking scopes and rejects publishing scopes", as
   assert.match(oauth, /pages_show_list/);
   assert.match(oauth, /pages_read_engagement/);
   assert.match(oauth, /instagram_basic/);
+  assert.match(oauth, /requireVariable\("META_LOGIN_CONFIG_ID"\)/);
+  assert.match(oauth, /url\.searchParams\.set\("config_id", environment\.loginConfigId\)/);
   assert.match(oauth, /FORBIDDEN_META_SCOPES/);
   assert.doesNotMatch(oauth.match(/REQUIRED_META_SCOPES[\s\S]*?as const;/)?.[0] ?? "", /pages_manage_posts|instagram_content_publish/);
   const metaPlatforms = platforms.platforms.filter((platform) => ["facebook_pages", "instagram_business"].includes(platform.id));
