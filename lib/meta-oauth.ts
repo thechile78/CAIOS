@@ -23,6 +23,7 @@ export function getMetaOAuthEnvironment() {
   return {
     appId: requireVariable("META_APP_ID"),
     appSecret: requireVariable("META_APP_SECRET"),
+    loginConfigId: requireVariable("META_LOGIN_CONFIG_ID"),
     stateSecret,
     graphVersion: process.env.META_GRAPH_API_VERSION?.trim() || "v21.0",
     expectedPageId: process.env.META_FACEBOOK_PAGE_ID?.trim() || "1214069685123391",
@@ -96,6 +97,7 @@ export function buildMetaAuthorizationUrl(state: string): string {
   const environment = getMetaOAuthEnvironment();
   const url = new URL(`https://www.facebook.com/${environment.graphVersion}/dialog/oauth`);
   url.searchParams.set("client_id", environment.appId);
+  url.searchParams.set("config_id", environment.loginConfigId);
   url.searchParams.set("redirect_uri", META_REDIRECT_URI);
   url.searchParams.set("response_type", "code");
   url.searchParams.set("scope", REQUIRED_META_SCOPES.join(","));
