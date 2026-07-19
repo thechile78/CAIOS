@@ -7,6 +7,7 @@ const publicPaths = [
   "/api/health",
   "/integrations/youtube",
   "/api/youtube/auth",
+  "/api/youtube/callback",
   "/api/integrations/youtube/connect",
   "/api/integrations/youtube/callback",
 ];
