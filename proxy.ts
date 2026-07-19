@@ -1,7 +1,14 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const publicPaths = ["/login", "/auth/callback", "/api/health"];
+const publicPaths = [
+  "/login",
+  "/auth/callback",
+  "/api/health",
+  "/integrations/youtube",
+  "/api/integrations/youtube/connect",
+  "/api/integrations/youtube/callback",
+];
 const canonicalSupabaseUrl = "https://ozucetngucaerxjziily.supabase.co";
 const canonicalSupabasePublishableKey =
   "sb_publishable_5smX6aQLk6pBGOcL0SzV4Q_yVM8SIEd";
