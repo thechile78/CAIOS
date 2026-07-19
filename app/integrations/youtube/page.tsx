@@ -13,9 +13,9 @@ function readParam(value: string | string[] | undefined): string | null {
 export default async function YouTubeIntegrationPage({ searchParams }: YouTubeIntegrationPageProps) {
   const params = await searchParams;
   const connected = readParam(params.connected) === "1";
+  const stored = readParam(params.stored) === "1";
   const channel = readParam(params.channel);
   const channelId = readParam(params.channelId);
-  const refreshToken = readParam(params.refreshToken);
   const error = readParam(params.error);
 
   return (
@@ -24,14 +24,14 @@ export default async function YouTubeIntegrationPage({ searchParams }: YouTubeIn
         <header className="hero">
           <p className="eyebrow">CAIOS Social Hub</p>
           <h1>YouTube connection</h1>
-          <p>This setup page performs a limited OAuth acceptance test using channel identification and video-upload permission only.</p>
+          <p>Connect The Chile channel through Google OAuth using only channel-identification and video-upload permissions.</p>
         </header>
 
         <section className="panel">
           <div className="panel-heading">
             <div>
               <p className="eyebrow">Approval-first integration</p>
-              <h2>{connected ? "YouTube authorization test passed" : "Connect The Chile YouTube channel"}</h2>
+              <h2>{connected ? "YouTube connected securely" : "Connect The Chile YouTube channel"}</h2>
             </div>
             <span className="safety-badge">No automatic publishing</span>
           </div>
@@ -40,14 +40,14 @@ export default async function YouTubeIntegrationPage({ searchParams }: YouTubeIn
             <div>
               <p><strong>Channel:</strong> {channel}</p>
               <p><strong>Channel ID:</strong> {channelId}</p>
-              <p><strong>Offline token:</strong> {refreshToken}</p>
-              <p>The OAuth flow and channel verification work. Tokens are not persisted during this acceptance phase, and no upload or publication was performed.</p>
+              <p><strong>Encrypted token vault:</strong> {stored ? "Saved" : "Not saved"}</p>
+              <p>The connection is ready for an approval-gated private upload test. No upload or publication was performed during authorization.</p>
             </div>
           ) : null}
 
           {error ? <p role="alert"><strong>Connection error:</strong> {error}</p> : null}
 
-          <p>CAIOS will eventually prepare private uploads and metadata drafts. Your explicit approval remains required before any upload test or public release.</p>
+          <p>CAIOS may prepare private uploads and metadata drafts, but your explicit approval remains required before every upload test or public release.</p>
           <a className="primary-button" href="/api/integrations/youtube/connect">Connect YouTube securely</a>
           <p><Link href="/login">Newsroom sign in</Link></p>
         </section>

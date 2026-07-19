@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 
+import { storeYoutubeConnection } from "@/lib/social-token-vault";
 import { exchangeYoutubeAuthorizationCode } from "@/lib/youtube-oauth";
 
 export const dynamic = "force-dynamic";
@@ -48,10 +49,20 @@ export async function GET(request: NextRequest) {
     const channel = channelData.items?.[0];
     if (!channel) throw new Error("Google authorized successfully, but no YouTube channel was found.");
 
+    await storeYoutubeConnection({
+      channelId: channel.id,
+      channelName: channel.snippet?.title ?? channel.id,
+      accessToken: tokens.access_token,
+      refreshToken: tokens.refresh_token,
+      expiresIn: tokens.expires_in,
+      scopes: tokens.scope.split(" ").filter(Boolean),
+      metadata: { customUrl: channel.snippet?.customUrl ?? null },
+    });
+
     destination.searchParams.set("connected", "1");
+    destination.searchParams.set("stored", "1");
     destination.searchParams.set("channel", channel.snippet?.title ?? channel.id);
     destination.searchParams.set("channelId", channel.id);
-    destination.searchParams.set("refreshToken", tokens.refresh_token ? "received" : "not-returned");
 
     const response = NextResponse.redirect(destination);
     response.cookies.delete("caios_youtube_oauth_state");
