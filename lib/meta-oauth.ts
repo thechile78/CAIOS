@@ -8,6 +8,10 @@ const META_REDIRECT_URI = "https://caios.vercel.app/api/integrations/meta/callba
 
 export const META_SCOPES = REQUIRED_META_SCOPES;
 
+export function getMetaSystemUserToken(): string | null {
+  return process.env.META_SYSTEM_USER_TOKEN?.trim() || null;
+}
+
 function requireVariable(name: string): string {
   const value = process.env[name]?.trim();
   if (!value) throw new Error(`Missing required environment variable: ${name}`);

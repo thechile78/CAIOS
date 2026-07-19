@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getCurrentProfile, roleCanAdminister } from "@/lib/auth";
-import { buildMetaAuthorizationUrl, createMetaOAuthState } from "@/lib/meta-oauth";
+import {
+  buildMetaAuthorizationUrl,
+  createMetaOAuthState,
+  getMetaSystemUserToken,
+  verifyMetaAccounts,
+} from "@/lib/meta-oauth";
+import { storeMetaConnections } from "@/lib/social-token-vault";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +21,15 @@ export async function GET(request: NextRequest) {
   if (!roleCanAdminister(profile.role)) return NextResponse.redirect(destination(request, "/unauthorized"));
 
   try {
+    const systemUserToken = getMetaSystemUserToken();
+    if (systemUserToken) {
+      const verified = await verifyMetaAccounts({ access_token: systemUserToken });
+      await storeMetaConnections({ actorId: profile.id, ...verified });
+      const url = destination(request, "/integrations/meta");
+      url.searchParams.set("connected", "1");
+      return NextResponse.redirect(url);
+    }
+
     const state = createMetaOAuthState(profile.id);
     const response = NextResponse.redirect(buildMetaAuthorizationUrl(state));
     response.cookies.set("caios_meta_oauth_state", state, {
@@ -25,9 +40,10 @@ export async function GET(request: NextRequest) {
       path: "/api/integrations/meta",
     });
     return response;
-  } catch {
+  } catch (caught) {
     const url = destination(request, "/integrations/meta");
-    url.searchParams.set("error", "Meta OAuth is not fully configured on the server.");
+    const message = caught instanceof Error ? caught.message : "Meta connection failed safely.";
+    url.searchParams.set("error", message);
     return NextResponse.redirect(url);
   }
 }

@@ -64,6 +64,17 @@ test("Meta routes do not expose publishing, scheduling, or automatic approval ac
   assert.match(callback, /storeMetaConnections/);
 });
 
+test("a configured Meta system-user token is verified and stored without browser exposure", async () => {
+  const oauth = await read("lib/meta-oauth.ts");
+  const connect = await read("app/api/integrations/meta/connect/route.ts");
+  assert.match(oauth, /process\.env\.META_SYSTEM_USER_TOKEN\?\.trim\(\) \|\| null/);
+  assert.match(connect, /const systemUserToken = getMetaSystemUserToken\(\)/);
+  assert.match(connect, /verifyMetaAccounts\(\{ access_token: systemUserToken \}\)/);
+  assert.match(connect, /storeMetaConnections\(\{ actorId: profile\.id, \.\.\.verified \}\)/);
+  assert.doesNotMatch(connect, /searchParams\.set\([^\n]*systemUserToken/);
+  assert.doesNotMatch(connect, /cookies\.set\([^\n]*systemUserToken/);
+});
+
 test("token summaries never select ciphertext and Meta writes force every safeguard", async () => {
   const vault = await read("lib/social-token-vault.ts");
   const summaryFunction = vault.slice(vault.indexOf("export async function getMetaConnectionSummary"));
