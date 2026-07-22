@@ -1,14 +1,22 @@
 export const workItemStatuses = ["Backlog", "Ready", "In Progress", "Founder Review", "Approved", "Blocked"] as const;
+export const workItemPriorities = ["Critical", "High", "Medium", "Low"] as const;
+export const workItemTypes = ["Editorial", "Product", "Revenue", "Operations", "Risk"] as const;
+export const workItemApprovers = ["The Chile", "Founder", "Editorial Lead"] as const;
 
 export type WorkItemStatus = (typeof workItemStatuses)[number];
-export type WorkItemPriority = "Critical" | "High" | "Medium" | "Low";
-export type WorkItemType = "Editorial" | "Product" | "Revenue" | "Operations" | "Risk";
+export type WorkItemPriority = (typeof workItemPriorities)[number];
+export type WorkItemType = (typeof workItemTypes)[number];
+export type WorkItemApprover = (typeof workItemApprovers)[number];
 
 export type WorkItemApproval = {
-  required: boolean;
+  required: true;
   approved: boolean;
-  approver: "The Chile" | "Founder" | "Editorial Lead";
+  approver: WorkItemApprover;
+  approvedBy: string | null;
+  approvedAt: string | null;
   note: string;
+  scope: "internal_work";
+  externalActionAuthorized: false;
 };
 
 export type GitHubLinkage = {
@@ -18,6 +26,7 @@ export type GitHubLinkage = {
 };
 
 export type WorkItem = {
+  databaseId: string;
   id: string;
   title: string;
   type: WorkItemType;
@@ -29,131 +38,34 @@ export type WorkItem = {
   approval: WorkItemApproval;
   github: GitHubLinkage;
   blockers: string[];
+  updatedAt: string;
 };
 
-export const projectWorkItems: WorkItem[] = [
-  {
-    id: "PM-101",
-    title: "Approval Queue hardening",
-    type: "Risk",
-    status: "In Progress",
-    priority: "Critical",
-    owner: "Newsroom Engineering",
-    dueLabel: "This sprint",
-    impact: "Protects the human approval boundary before any WordPress or social handoff.",
-    approval: {
-      required: true,
-      approved: false,
-      approver: "The Chile",
-      note: "Cannot ship to public channels until The Chile signs off.",
-    },
-    github: {
-      issueUrl: null,
-      branchName: "placeholder/approval-queue-hardening",
-      pullRequestUrl: null,
-    },
-    blockers: ["Founder review pending"],
-  },
-  {
-    id: "PM-112",
-    title: "GA4 and Search Console readiness",
-    type: "Operations",
-    status: "Ready",
-    priority: "High",
-    owner: "Founder",
-    dueLabel: "Next setup block",
-    impact: "Prepares audience signal reporting without changing publishing permissions.",
-    approval: {
-      required: true,
-      approved: false,
-      approver: "Founder",
-      note: "Credentials stay server-side and must be reviewed before connection.",
-    },
-    github: {
-      issueUrl: null,
-      branchName: null,
-      pullRequestUrl: null,
-    },
-    blockers: [],
-  },
-  {
-    id: "PM-124",
-    title: "Sponsorship package tracker",
-    type: "Revenue",
-    status: "Backlog",
-    priority: "Medium",
-    owner: "Founder",
-    dueLabel: "Post-launch prep",
-    impact: "Tracks revenue operations before external commitments are made.",
-    approval: {
-      required: true,
-      approved: false,
-      approver: "Founder",
-      note: "Founder approval required before sponsor-facing language is used.",
-    },
-    github: {
-      issueUrl: null,
-      branchName: null,
-      pullRequestUrl: null,
-    },
-    blockers: ["Awaiting offer list"],
-  },
-  {
-    id: "PM-137",
-    title: "WordPress draft QA checklist",
-    type: "Editorial",
-    status: "Founder Review",
-    priority: "Critical",
-    owner: "The Chile",
-    dueLabel: "Before dispatch expansion",
-    impact: "Keeps drafts review-only and documents source, fact, SEO, accessibility, and image-rights checks.",
-    approval: {
-      required: true,
-      approved: false,
-      approver: "The Chile",
-      note: "Approval gate remains closed until every checklist item is verified.",
-    },
-    github: {
-      issueUrl: null,
-      branchName: "placeholder/wp-draft-qa-checklist",
-      pullRequestUrl: null,
-    },
-    blockers: ["The Chile approval required"],
-  },
-  {
-    id: "PM-143",
-    title: "Mobile command-center polish",
-    type: "Product",
-    status: "Approved",
-    priority: "Low",
-    owner: "Design Ops",
-    dueLabel: "Queued",
-    impact: "Improves founder dashboard accessibility and small-screen review comfort.",
-    approval: {
-      required: true,
-      approved: true,
-      approver: "Founder",
-      note: "Approved for internal UI work only; no publishing scope included.",
-    },
-    github: {
-      issueUrl: null,
-      branchName: "placeholder/mobile-command-center-polish",
-      pullRequestUrl: null,
-    },
-    blockers: [],
-  },
-];
+export function isWorkItemStatus(value: unknown): value is WorkItemStatus {
+  return typeof value === "string" && workItemStatuses.includes(value as WorkItemStatus);
+}
 
-export function getWorkItemsByStatus(items: readonly WorkItem[] = projectWorkItems) {
+export function isWorkItemPriority(value: unknown): value is WorkItemPriority {
+  return typeof value === "string" && workItemPriorities.includes(value as WorkItemPriority);
+}
+
+export function isWorkItemType(value: unknown): value is WorkItemType {
+  return typeof value === "string" && workItemTypes.includes(value as WorkItemType);
+}
+
+export function isWorkItemApprover(value: unknown): value is WorkItemApprover {
+  return typeof value === "string" && workItemApprovers.includes(value as WorkItemApprover);
+}
+
+export function getWorkItemsByStatus(items: readonly WorkItem[]) {
   return workItemStatuses.map((status) => ({
     status,
     items: items.filter((item) => item.status === status),
   }));
 }
 
-export function getProjectManagerMetrics(items: readonly WorkItem[] = projectWorkItems) {
-  const approvalRequired = items.filter((item) => item.approval.required);
-  const awaitingApproval = approvalRequired.filter((item) => !item.approval.approved);
+export function getProjectManagerMetrics(items: readonly WorkItem[]) {
+  const awaitingApproval = items.filter((item) => item.approval.required && !item.approval.approved);
   const blocked = items.filter((item) => item.blockers.length > 0 || item.status === "Blocked");
   const linkedToGitHub = items.filter(
     (item) => item.github.issueUrl !== null || item.github.branchName !== null || item.github.pullRequestUrl !== null,
@@ -165,10 +77,14 @@ export function getProjectManagerMetrics(items: readonly WorkItem[] = projectWor
     awaitingApproval: awaitingApproval.length,
     blocked: blocked.length,
     githubPlaceholders: items.length - linkedToGitHub.length,
-    approvedInternalOnly: approvalRequired.filter((item) => item.approval.approved).length,
+    approvedInternalOnly: items.filter((item) => item.approval.approved).length,
   };
 }
 
 export function canMoveWorkItemToApproved(item: WorkItem) {
-  return item.approval.required && item.approval.approved;
+  return item.status === "Founder Review"
+    && item.approval.required
+    && !item.approval.approved
+    && item.approval.scope === "internal_work"
+    && item.approval.externalActionAuthorized === false;
 }

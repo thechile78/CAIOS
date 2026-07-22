@@ -1,4 +1,17 @@
-import { getProjectManagerMetrics, getWorkItemsByStatus, projectWorkItems } from "@/lib/project-manager";
+import {
+  createProjectWorkItem,
+  recordProjectWorkItemDecision,
+  updateProjectWorkItemStatus,
+} from "@/app/project-manager/actions";
+import {
+  getProjectManagerMetrics,
+  getWorkItemsByStatus,
+  workItemApprovers,
+  workItemPriorities,
+  workItemStatuses,
+  workItemTypes,
+  type WorkItem,
+} from "@/lib/project-manager";
 import styles from "./founder-dashboard.module.css";
 
 const companyMetrics = [
@@ -21,10 +34,22 @@ const founderControls = [
   { name: "Analytics Growth Loop", status: "Connection pending", tone: "neutral" },
 ];
 
-const projectMetrics = getProjectManagerMetrics(projectWorkItems);
-const workItemColumns = getWorkItemsByStatus(projectWorkItems);
+interface FounderDashboardProps {
+  workItems: readonly WorkItem[];
+  canManageProjects: boolean;
+  statusMessage: string | null;
+  errorMessage: string | null;
+}
 
-export function FounderDashboard() {
+export function FounderDashboard({
+  workItems,
+  canManageProjects,
+  statusMessage,
+  errorMessage,
+}: FounderDashboardProps) {
+  const projectMetrics = getProjectManagerMetrics(workItems);
+  const workItemColumns = getWorkItemsByStatus(workItems);
+
   return (
     <section className={styles.founderDashboard} id="founder-dashboard" aria-labelledby="founder-dashboard-heading">
       <div className={styles.headerRow}>
@@ -78,12 +103,35 @@ export function FounderDashboard() {
             <p className="eyebrow">Milestone 2</p>
             <h3 id="project-manager-heading">Project Manager</h3>
             <p>
-              Kanban view for reusable CAIOS work items with approval-aware workflow, executive metrics,
-              and GitHub linkage placeholders for future issue, branch, and pull request automation.
+              Persisted Kanban view for reusable CAIOS work items with authenticated, approval-aware workflow,
+              executive metrics, and GitHub linkage placeholders for future issue, branch, and pull request automation.
             </p>
           </div>
           <span className="safety-badge safety-strong">Human approval gate enforced</span>
         </div>
+
+        {statusMessage ? <p className={styles.successNotice} role="status">{statusMessage}</p> : null}
+        {errorMessage ? <p className={styles.errorNotice} role="alert">{errorMessage}</p> : null}
+
+        {canManageProjects ? (
+          <details className={styles.createPanel}>
+            <summary>Create internal work item</summary>
+            <form action={createProjectWorkItem} className={styles.createForm}>
+              <label>Work key<input name="workKey" required maxLength={32} pattern="PM-[0-9]{3,}" placeholder="PM-150" /></label>
+              <label>Title<input name="title" required maxLength={160} /></label>
+              <label>Type<select name="workType" defaultValue="Product">{workItemTypes.map((value) => <option key={value}>{value}</option>)}</select></label>
+              <label>Priority<select name="priority" defaultValue="Medium">{workItemPriorities.map((value) => <option key={value}>{value}</option>)}</select></label>
+              <label>Owner<input name="ownerLabel" required maxLength={120} /></label>
+              <label>Due<input name="dueLabel" required maxLength={120} placeholder="This sprint" /></label>
+              <label>Approver<select name="approverLabel" defaultValue="Founder">{workItemApprovers.map((value) => <option key={value}>{value}</option>)}</select></label>
+              <label className={styles.fullField}>Impact<textarea name="impact" required maxLength={1000} rows={3} /></label>
+              <label className={styles.fullField}>Approval note<textarea name="approvalNote" required maxLength={1000} rows={2} /></label>
+              <button className="primary-button" type="submit">Create in Backlog</button>
+            </form>
+          </details>
+        ) : (
+          <p className={styles.readOnlyNotice}>Project changes and decisions are restricted to administrators. Your view is read-only.</p>
+        )}
 
         <div className={styles.briefAndMetrics}>
           <article className={styles.founderBrief} aria-labelledby="founder-brief-heading">
@@ -130,9 +178,38 @@ export function FounderDashboard() {
                     </dl>
                     <div className={styles.approvalStrip} data-approved={item.approval.approved}>
                       <strong>{item.approval.approver}</strong>
-                      <span>{item.approval.approved ? "Approved for internal work" : item.approval.note}</span>
+                      <span>{item.approval.approved ? `Approved by ${item.approval.approvedBy ?? "recorded administrator"} for internal work only` : item.approval.note}</span>
                     </div>
                     {item.blockers.length > 0 ? <small>Blockers: {item.blockers.join(", ")}</small> : null}
+                    {canManageProjects ? (
+                      <div className={styles.workItemActions}>
+                        <form action={updateProjectWorkItemStatus}>
+                          <input type="hidden" name="workItemId" value={item.databaseId} />
+                          <input type="hidden" name="expectedUpdatedAt" value={item.updatedAt} />
+                          <label>
+                            Move to
+                            <select name="status" defaultValue={item.status === "Approved" ? "Ready" : item.status}>
+                              {workItemStatuses.filter((status) => status !== "Approved").map((status) => (
+                                <option key={status} value={status}>{status}</option>
+                              ))}
+                            </select>
+                          </label>
+                          <button type="submit">Update status</button>
+                        </form>
+                        {item.status === "Founder Review" ? (
+                          <form action={recordProjectWorkItemDecision}>
+                            <input type="hidden" name="workItemId" value={item.databaseId} />
+                            <input type="hidden" name="expectedUpdatedAt" value={item.updatedAt} />
+                            <label>Decision note<textarea name="note" maxLength={4000} rows={2} /></label>
+                            <div className={styles.decisionButtons}>
+                              <button type="submit" name="decision" value="approved">Approve internal work</button>
+                              <button type="submit" name="decision" value="changes_requested">Request changes</button>
+                              <button type="submit" name="decision" value="rejected">Reject</button>
+                            </div>
+                          </form>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </article>
                 ))}
               </div>
