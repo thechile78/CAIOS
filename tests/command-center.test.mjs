@@ -25,3 +25,11 @@ test("workflow does not include automatic publishing", () => {
   assert.equal(workflow.includes("Publish"), false);
   assert.equal(workflow.includes("Auto Publish"), false);
 });
+
+test("founder dashboard keeps publishing authority human-gated", async () => {
+  const source = await import("node:fs/promises").then((fs) => fs.readFile("components/founder-dashboard.tsx", "utf8"));
+
+  assert.match(source, /The Chile approval required/);
+  assert.match(source, /No automatic publishing/);
+  assert.doesNotMatch(source, /Auto Publish/);
+});

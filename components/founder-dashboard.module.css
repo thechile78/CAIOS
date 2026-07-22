@@ -1,0 +1,170 @@
+.founderDashboard {
+  padding: 24px;
+  margin-bottom: 20px;
+  border: 1px solid rgba(215, 25, 32, 0.18);
+  border-left: 6px solid var(--red);
+  border-radius: 18px;
+  background: linear-gradient(135deg, #ffffff 0%, #fff7ed 58%, #fff1f2 100%);
+  box-shadow: 0 18px 40px rgba(17, 17, 17, 0.06);
+}
+
+.headerRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.headerRow h3 {
+  margin: 4px 0 8px;
+  font-size: 28px;
+}
+
+.headerRow p {
+  max-width: 780px;
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.metricGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.metricCard,
+.controlPanel {
+  border: 1px solid rgba(17, 17, 17, 0.08);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(10px);
+}
+
+.metricCard {
+  padding: 16px;
+}
+
+.metricCard span,
+.metricCard small {
+  display: block;
+  color: var(--muted);
+}
+
+.metricCard span {
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.metricCard strong {
+  display: block;
+  margin: 10px 0 6px;
+  font-size: 24px;
+  line-height: 1.1;
+}
+
+.metricCard small {
+  line-height: 1.45;
+}
+
+.controlGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  gap: 12px;
+}
+
+.controlPanel {
+  padding: 18px;
+}
+
+.controlPanel h4 {
+  margin: 0 0 12px;
+  font-size: 18px;
+}
+
+.controlPanel ol {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.controlPanel li + li {
+  margin-top: 8px;
+}
+
+.controlList {
+  display: grid;
+  gap: 10px;
+}
+
+.controlItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.controlItem:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.controlItem strong {
+  font-size: 14px;
+}
+
+.controlItem span {
+  display: inline-flex;
+  flex-shrink: 0;
+  border-radius: 999px;
+  padding: 6px 9px;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.locked {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.watch {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.neutral {
+  background: #e0f2fe;
+  color: #075985;
+}
+
+@media (max-width: 1100px) {
+  .metricGrid,
+  .controlGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .founderDashboard {
+    padding: 18px;
+  }
+
+  .headerRow,
+  .controlItem {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .metricGrid,
+  .controlGrid {
+    grid-template-columns: 1fr;
+  }
+}
