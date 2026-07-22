@@ -2,10 +2,12 @@ import { runNewsDiscovery } from "@/app/discovery/actions";
 import { signOut } from "@/app/login/actions";
 import { AuthenticatedEditorialQueue } from "@/components/authenticated-editorial-queue";
 import { EditorialCommandCenter } from "@/components/editorial-command-center";
+import { FounderDashboard } from "@/components/founder-dashboard";
 import { requireCurrentProfile, roleCanReview } from "@/lib/auth";
 import { roleCanCreateStory } from "@/lib/editorial-repository";
 
 const modules = [
+  ["Founder Dashboard", "#founder-dashboard"],
   ["Command Center", "#story-radar"],
   ["Editorial Queue", "#authenticated-editorial-queue"],
   ["News Discovery", "#news-discovery"],
@@ -44,7 +46,7 @@ export default async function CommandCenterPage({ searchParams }: CommandCenterP
       <aside className="sidebar">
         <div className="brand">
           <div className="mark">🌶️</div>
-          <div><h1>CAIOS</h1><p>Newsroom OS v4.5</p></div>
+          <div><h1>CAIOS</h1><p>Comprehensive OS v5</p></div>
         </div>
 
         <nav>
@@ -52,7 +54,7 @@ export default async function CommandCenterPage({ searchParams }: CommandCenterP
         </nav>
 
         <div className="rule user-rule">
-          <strong>{profile.displayName ?? profile.email ?? "Newsroom user"}</strong>
+          <strong>{profile.displayName ?? profile.email ?? "CAIOS user"}</strong>
           <span>Role: {profile.role.replaceAll("_", " ")}</span>
           <span>{roleCanReview(profile.role) ? "Approval review enabled" : "Approval review restricted"}</span>
           <form action={signOut}><button type="submit">Sign out</button></form>
@@ -66,11 +68,12 @@ export default async function CommandCenterPage({ searchParams }: CommandCenterP
 
       <section className="content">
         <header className="hero">
-          <p className="eyebrow">Chilemaniacs Newsroom Command Center</p>
-          <h2>Live workflow visibility, authenticated editorial control, and approval-gated delivery.</h2>
-          <p>Dashboard v2 reads protected Supabase records through your authenticated session. No story can publish automatically.</p>
+          <p className="eyebrow">CAIOS Comprehensive Operating System</p>
+          <h2>One command center for company priorities, approvals, editorial operations, and execution.</h2>
+          <p>The Founder Dashboard controls the project sequence while the existing newsroom remains fully available below it. No story, message, deployment, or external action happens automatically.</p>
         </header>
 
+        <FounderDashboard />
         <EditorialCommandCenter />
         <AuthenticatedEditorialQueue
           role={profile.role}
