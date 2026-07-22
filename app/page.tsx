@@ -2,10 +2,12 @@ import { runNewsDiscovery } from "@/app/discovery/actions";
 import { signOut } from "@/app/login/actions";
 import { AuthenticatedEditorialQueue } from "@/components/authenticated-editorial-queue";
 import { EditorialCommandCenter } from "@/components/editorial-command-center";
+import { FounderDashboard } from "@/components/founder-dashboard";
 import { requireCurrentProfile, roleCanReview } from "@/lib/auth";
 import { roleCanCreateStory } from "@/lib/editorial-repository";
 
 const modules = [
+  ["Founder Dashboard", "#founder-dashboard"],
   ["Command Center", "#story-radar"],
   ["Editorial Queue", "#authenticated-editorial-queue"],
   ["News Discovery", "#news-discovery"],
@@ -44,7 +46,7 @@ export default async function CommandCenterPage({ searchParams }: CommandCenterP
       <aside className="sidebar">
         <div className="brand">
           <div className="mark">🌶️</div>
-          <div><h1>CAIOS</h1><p>Newsroom OS v4.5</p></div>
+          <div><h1>CAIOS</h1><p>Newsroom OS v5</p></div>
         </div>
 
         <nav>
@@ -67,10 +69,11 @@ export default async function CommandCenterPage({ searchParams }: CommandCenterP
       <section className="content">
         <header className="hero">
           <p className="eyebrow">Chilemaniacs Newsroom Command Center</p>
-          <h2>Live workflow visibility, authenticated editorial control, and approval-gated delivery.</h2>
-          <p>Dashboard v2 reads protected Supabase records through your authenticated session. No story can publish automatically.</p>
+          <h2>Founder control, live workflow visibility, authenticated editorial review, and approval-gated delivery.</h2>
+          <p>The v5 Command Center brings founder-level company controls into the protected newsroom dashboard. No story or social content can publish automatically.</p>
         </header>
 
+        <FounderDashboard />
         <EditorialCommandCenter />
         <AuthenticatedEditorialQueue
           role={profile.role}
