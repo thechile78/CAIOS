@@ -8,6 +8,7 @@ import { roleCanCreateStory } from "@/lib/editorial-repository";
 
 const modules = [
   ["Founder Dashboard", "#founder-dashboard"],
+  ["Project Manager", "#project-manager"],
   ["Command Center", "#story-radar"],
   ["Editorial Queue", "#authenticated-editorial-queue"],
   ["News Discovery", "#news-discovery"],
