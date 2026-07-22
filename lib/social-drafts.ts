@@ -16,6 +16,7 @@ export interface SocialDraft {
   instagramCaption: string | null;
   facebookPageId: string;
   instagramAccountId: string;
+  mediaPackageId: string | null;
   status: SocialDraftStatus;
   contentHash: string;
   updatedAt: string;
@@ -32,11 +33,18 @@ export interface SocialDraft {
   }>;
 }
 
+export async function isCurrentUserFinalApprover(): Promise<boolean> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.rpc("is_current_social_final_approver");
+  if (error) throw new Error("Unable to verify the final approver binding.");
+  return data === true;
+}
+
 export async function listSocialDrafts(): Promise<SocialDraft[]> {
   const supabase = await createSupabaseServerClient();
   const { data: drafts, error } = await supabase
     .from("social_content_drafts")
-    .select("id,title,facebook_caption,instagram_caption,facebook_page_id,instagram_account_id,status,content_hash,updated_at,publishing_enabled,scheduling_enabled,auto_post_enabled,auto_approval_enabled,approval_required")
+    .select("id,title,facebook_caption,instagram_caption,facebook_page_id,instagram_account_id,media_package_id,status,content_hash,updated_at,publishing_enabled,scheduling_enabled,auto_post_enabled,auto_approval_enabled,approval_required")
     .order("updated_at", { ascending: false })
     .limit(50);
 
@@ -60,6 +68,7 @@ export async function listSocialDrafts(): Promise<SocialDraft[]> {
     instagramCaption: draft.instagram_caption,
     facebookPageId: draft.facebook_page_id,
     instagramAccountId: draft.instagram_account_id,
+    mediaPackageId: draft.media_package_id,
     status: draft.status as SocialDraftStatus,
     contentHash: draft.content_hash,
     updatedAt: draft.updated_at,

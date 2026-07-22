@@ -131,6 +131,12 @@ nav a:hover { background: var(--red); }
 .social-draft-card h3 { margin: 0; }
 .social-draft-card code { overflow-wrap: anywhere; }
 .social-draft-card form { margin-top: 16px; }
+.media-artifact-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); margin-top: 16px; }
+.media-artifact-card { border: 1px solid var(--border); border-radius: 12px; background: #fff; padding: 14px; min-width: 0; }
+.media-artifact-card video { border-radius: 10px; display: block; margin-top: 10px; max-height: 520px; width: 100%; background: #111; }
+.private-upload-panel { border-top: 1px solid var(--border); display: grid; gap: 14px; margin-top: 16px; padding-top: 16px; }
+.private-upload-file { background: #fff; border: 1px solid var(--border); border-radius: 10px; display: grid; gap: 8px; padding: 12px; }
+.private-upload-file progress { width: 100%; }
 
 .wordpress-bridge-panel { border-left: 6px solid var(--red); }
 
