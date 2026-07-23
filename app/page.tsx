@@ -3,8 +3,9 @@ import { signOut } from "@/app/login/actions";
 import { AuthenticatedEditorialQueue } from "@/components/authenticated-editorial-queue";
 import { EditorialCommandCenter } from "@/components/editorial-command-center";
 import { FounderDashboard } from "@/components/founder-dashboard";
-import { requireCurrentProfile, roleCanReview } from "@/lib/auth";
+import { requireCurrentProfile, roleCanAdminister, roleCanReview } from "@/lib/auth";
 import { roleCanCreateStory } from "@/lib/editorial-repository";
+import { listProjectWorkItems } from "@/lib/project-manager-repository";
 
 const modules = [
   ["Founder Dashboard", "#founder-dashboard"],
@@ -31,7 +32,7 @@ function stringParam(value: string | string[] | undefined): string | null {
 
 export default async function CommandCenterPage({ searchParams }: CommandCenterPageProps) {
   const profile = await requireCurrentProfile();
-  const params = await searchParams;
+  const [params, projectWorkItems] = await Promise.all([searchParams, listProjectWorkItems()]);
   const discovery = stringParam(params.discovery);
   const created = stringParam(params.created) ?? "0";
   const duplicates = stringParam(params.duplicates) ?? "0";
@@ -41,6 +42,8 @@ export default async function CommandCenterPage({ searchParams }: CommandCenterP
   const desk = stringParam(params.desk);
   const priority = stringParam(params.priority);
   const sort = stringParam(params.sort);
+  const projectStatus = stringParam(params.project_status);
+  const projectError = stringParam(params.project_error);
 
   return (
     <main className="shell">
@@ -74,7 +77,12 @@ export default async function CommandCenterPage({ searchParams }: CommandCenterP
           <p>The v5 Command Center brings founder-level company controls into the protected newsroom dashboard. No story or social content can publish automatically.</p>
         </header>
 
-        <FounderDashboard />
+        <FounderDashboard
+          workItems={projectWorkItems}
+          canManageProjects={roleCanAdminister(profile.role)}
+          statusMessage={projectStatus}
+          errorMessage={projectError}
+        />
         <EditorialCommandCenter />
         <AuthenticatedEditorialQueue
           role={profile.role}
