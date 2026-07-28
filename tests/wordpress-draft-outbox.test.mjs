@@ -14,6 +14,10 @@ const repository = await readFile(
   new URL("../lib/wordpress-draft-outbox.ts", import.meta.url),
   "utf8",
 );
+const bridge = await readFile(
+  new URL("../lib/wordpress-draft-bridge.ts", import.meta.url),
+  "utf8",
+);
 
 test("WordPress outbox permits draft intent only", () => {
   assert.match(migration, /payload ->> 'status' = 'draft'/);
@@ -32,6 +36,12 @@ test("outbox is disabled by default and makes no network call", () => {
   assert.match(action, /WordPress%20draft%20outbox%20is%20disabled/);
   assert.doesNotMatch(action, /fetch\s*\(/);
   assert.doesNotMatch(action, /axios/);
+});
+
+test("WordPress draft payload preserves source URLs", () => {
+  assert.match(bridge, /source\.url/);
+  assert.match(bridge, /Source: \$\{url\}/);
+  assert.match(bridge, /\[storyContent, \.\.\.sourceLines\]/);
 });
 
 test("database enforces role, approval snapshot, idempotency, and audit", () => {
