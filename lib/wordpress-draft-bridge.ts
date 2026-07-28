@@ -167,7 +167,12 @@ export async function prepareWordPressDraftIntent(storyId: string): Promise<stri
 
   if (existingOutbox) return existingOutbox.id;
 
-  const content = (story.body ?? "").trim() || (story.summary ?? "").trim();
+  const storyContent = (story.body ?? "").trim() || (story.summary ?? "").trim();
+  const sourceLines = (sources ?? [])
+    .map((source) => (typeof source.url === "string" ? source.url.trim() : ""))
+    .filter(Boolean)
+    .map((url) => `Source: ${url}`);
+  const content = [storyContent, ...sourceLines].filter(Boolean).join("\n\n");
   const payload = {
     status: "draft",
     title: story.title,
