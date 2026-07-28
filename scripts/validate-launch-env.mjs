@@ -11,7 +11,7 @@ const required = [
 
 const wordpressEnabled = process.env.CAIOS_WORDPRESS_DRAFT_DISPATCH_ENABLED === "true";
 if (wordpressEnabled) {
-  required.push("CAIOS_WORDPRESS_URL", "CAIOS_WORDPRESS_USERNAME", "CAIOS_WORDPRESS_APPLICATION_PASSWORD");
+  required.push("CAIOS_WORDPRESS_SITE", "CAIOS_WORDPRESS_OAUTH_ACCESS_TOKEN");
 }
 
 const missing = required.filter((name) => !process.env[name]?.trim());
@@ -22,7 +22,7 @@ if (process.env.CAIOS_WORDPRESS_DRAFT_OUTBOX_ENABLED === "true" && !wordpressEna
 }
 
 if (mode === "production") {
-  if (process.env.CAIOS_WORDPRESS_DRY_RUN !== "false") violations.push("Production requires CAIOS_WORDPRESS_DRY_RUN=false only after staging acceptance.");
+  if (process.env.CAIOS_WORDPRESS_DRAFT_DRY_RUN !== "false") violations.push("Production requires CAIOS_WORDPRESS_DRAFT_DRY_RUN=false only after staging acceptance.");
   if (process.env.CAIOS_ALLOW_AUTOMATIC_PUBLISH === "true") violations.push("Automatic publishing must remain disabled.");
 }
 
