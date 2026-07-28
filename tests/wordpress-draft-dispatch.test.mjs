@@ -25,6 +25,9 @@ test("transport uses WordPress.com OAuth and enforces draft-only delivery", () =
   assert.match(client, /body\.set\("publicize", "false"\)/);
   assert.match(client, /application\/x-www-form-urlencoded/);
   assert.doesNotMatch(client, /content-type": "application\/json"/);
+  assert.match(client, /posts\/new\//);
+  assert.match(client, /getWordPressError/);
+  assert.match(client, /slice\(0, 300\)/);
   assert.match(client, /responseBody\.status !== "draft"/);
   assert.match(client, /10_000/);
   assert.match(client, /redirect: "error"/);

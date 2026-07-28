@@ -43,8 +43,20 @@ function encodeWordPressDraft(payload: Record<string, unknown>): URLSearchParams
 function getEndpoint(): URL {
   const site = required("CAIOS_WORDPRESS_SITE");
   return new URL(
-    `https://public-api.wordpress.com/rest/v1.1/sites/${encodeURIComponent(site)}/posts/new`,
+    `https://public-api.wordpress.com/rest/v1.1/sites/${encodeURIComponent(site)}/posts/new/`,
   );
+}
+
+function getWordPressError(responseText: string): string | null {
+  try {
+    const error = JSON.parse(responseText) as { error?: unknown; message?: unknown };
+    const parts = [error.error, error.message].filter(
+      (value): value is string => typeof value === "string" && value.length > 0,
+    );
+    return parts.length > 0 ? parts.join(": ").slice(0, 300) : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function sendWordPressDraft(payload: unknown): Promise<WordPressDraftResult> {
@@ -74,8 +86,14 @@ export async function sendWordPressDraft(payload: unknown): Promise<WordPressDra
       signal: controller.signal,
     });
 
-    if (!response.ok) throw new Error(`WordPress draft request failed with HTTP ${response.status}`);
-    const responseBody = (await response.json()) as {
+    const responseText = await response.text();
+    if (!response.ok) {
+      const detail = getWordPressError(responseText);
+      throw new Error(
+        `WordPress draft request failed with HTTP ${response.status}${detail ? `: ${detail}` : ""}`,
+      );
+    }
+    const responseBody = JSON.parse(responseText) as {
       ID?: number | string;
       URL?: string;
       status?: string;
