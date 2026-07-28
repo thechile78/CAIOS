@@ -20,8 +20,12 @@ test("transport uses WordPress.com OAuth and enforces draft-only delivery", () =
   assert.match(client, /CAIOS_WORDPRESS_OAUTH_ACCESS_TOKEN/);
   assert.match(client, /authorization: `Bearer \$\{accessToken\}`/);
   assert.match(client, /record\.status !== "draft"/);
-  assert.match(client, /status: "draft", publicize: false/);
-  assert.match(client, /body\.status !== "draft"/);
+  assert.match(client, /new URLSearchParams\(\)/);
+  assert.match(client, /body\.set\("status", "draft"\)/);
+  assert.match(client, /body\.set\("publicize", "false"\)/);
+  assert.match(client, /application\/x-www-form-urlencoded/);
+  assert.doesNotMatch(client, /content-type": "application\/json"/);
+  assert.match(client, /responseBody\.status !== "draft"/);
   assert.match(client, /10_000/);
   assert.match(client, /redirect: "error"/);
   assert.doesNotMatch(client, /Basic \$\{/);

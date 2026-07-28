@@ -29,6 +29,17 @@ export function validateWordPressDraftPayload(payload: unknown): asserts payload
   }
 }
 
+function encodeWordPressDraft(payload: Record<string, unknown>): URLSearchParams {
+  const body = new URLSearchParams();
+  for (const field of ["title", "content", "excerpt"] as const) {
+    const value = payload[field];
+    if (typeof value === "string") body.set(field, value);
+  }
+  body.set("status", "draft");
+  body.set("publicize", "false");
+  return body;
+}
+
 function getEndpoint(): URL {
   const site = required("CAIOS_WORDPRESS_SITE");
   return new URL(
@@ -49,32 +60,33 @@ export async function sendWordPressDraft(payload: unknown): Promise<WordPressDra
   const timeout = setTimeout(() => controller.abort(), 10_000);
 
   try {
+    const body = encodeWordPressDraft(payload);
     const response = await fetch(getEndpoint(), {
       method: "POST",
       headers: {
         authorization: `Bearer ${accessToken}`,
-        "content-type": "application/json",
+        "content-type": "application/x-www-form-urlencoded",
         "user-agent": "CAIOS/5.1",
       },
-      body: JSON.stringify({ ...payload, status: "draft", publicize: false }),
+      body,
       cache: "no-store",
       redirect: "error",
       signal: controller.signal,
     });
 
     if (!response.ok) throw new Error(`WordPress draft request failed with HTTP ${response.status}`);
-    const body = (await response.json()) as {
+    const responseBody = (await response.json()) as {
       ID?: number | string;
       URL?: string;
       status?: string;
     };
-    if (body.ID === undefined) throw new Error("WordPress response did not include a post id");
-    if (body.status !== "draft") {
+    if (responseBody.ID === undefined) throw new Error("WordPress response did not include a post id");
+    if (responseBody.status !== "draft") {
       throw new Error("WordPress did not confirm draft status");
     }
     return {
-      id: String(body.ID),
-      link: typeof body.URL === "string" ? body.URL : null,
+      id: String(responseBody.ID),
+      link: typeof responseBody.URL === "string" ? responseBody.URL : null,
       dryRun: false,
     };
   } finally {
