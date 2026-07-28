@@ -12,8 +12,8 @@ try {
   const response = await fetch(url, { signal: controller.signal, redirect: "error" });
   if (!response.ok) throw new Error(`Health endpoint returned ${response.status}`);
   const body = await response.json();
-  if (body.status !== "ready") throw new Error(`Unexpected health status: ${body.status}`);
-  if (body.publishing !== "human-approval-required") throw new Error("Human approval safeguard is not reported.");
+  if (body.status !== "ok") throw new Error(`Unexpected health status: ${body.status}`);
+  if (body.publishingMode !== "human-approval-required") throw new Error("Human approval safeguard is not reported.");
   console.log("CAIOS smoke test passed.");
 } catch (error) {
   console.error(error instanceof Error ? error.message : String(error));
