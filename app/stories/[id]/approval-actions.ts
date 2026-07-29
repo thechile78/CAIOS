@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 
 import { requireRole } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { publishWordPressPost } from "@/lib/wordpress-client";
+import { buildApprovedWordPressPayload } from "@/lib/wordpress-publication";
 
 const checklistRoles = ["administrator", "editor", "producer", "researcher", "reviewer"] as const;
 const reviewerRoles = ["administrator", "editor", "reviewer"] as const;
@@ -59,6 +61,53 @@ export async function recordEditorialDecisionAction(formData: FormData) {
   }
 
   const supabase = await createSupabaseServerClient();
+  if (decision === "approved") {
+    const { data: publicationRecordId, error: beginError } = await supabase.rpc(
+      "begin_approved_wordpress_publication",
+      {
+        p_story_id: storyId,
+        p_expected_updated_at: expectedUpdatedAt,
+        p_note: note || null,
+      },
+    );
+
+    if (beginError || !publicationRecordId) {
+      redirect(`/stories/${storyId}?approval_error=${failureCode(beginError?.message ?? "failed")}`);
+    }
+
+    try {
+      const payload = await buildApprovedWordPressPayload(storyId);
+      const result = await publishWordPressPost(payload);
+      if (result.dryRun) throw new Error("WordPress production publishing is in dry-run mode");
+
+      const { error: finishError } = await supabase.rpc("finish_approved_wordpress_publication", {
+        p_publication_record_id: publicationRecordId,
+        p_success: true,
+        p_external_id: result.id,
+        p_external_url: result.link,
+        p_error: null,
+      });
+      if (finishError) throw new Error(finishError.message);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "WordPress publication failed";
+      await supabase.rpc("finish_approved_wordpress_publication", {
+        p_publication_record_id: publicationRecordId,
+        p_success: false,
+        p_external_id: null,
+        p_external_url: null,
+        p_error: message,
+      });
+      revalidatePath("/");
+      revalidatePath(`/stories/${storyId}`);
+      redirect(`/stories/${storyId}?publication_error=publish_failed`);
+    }
+
+    revalidatePath("/");
+    revalidatePath("/approval-queue");
+    revalidatePath(`/stories/${storyId}`);
+    redirect(`/stories/${storyId}?published=1`);
+  }
+
   const { error } = await supabase.rpc("record_editorial_decision", {
     p_story_id: storyId,
     p_expected_updated_at: expectedUpdatedAt,
