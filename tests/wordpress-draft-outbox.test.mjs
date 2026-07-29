@@ -40,8 +40,8 @@ test("outbox is disabled by default and makes no network call", () => {
 
 test("WordPress draft payload preserves source URLs", () => {
   assert.match(bridge, /source\.url/);
-  assert.match(bridge, /Source: \$\{url\}/);
-  assert.match(bridge, /\[storyContent, \.\.\.sourceLines\]/);
+  assert.match(bridge, /Read More <a href="\$\{escapeHtmlAttribute\(url\)\}">HERE<\/a>/);
+  assert.match(bridge, /\[image, paragraphs\(storyContent\), \.\.\.sourceLinks, socialEmbed\]/);
 });
 
 test("database enforces role, approval snapshot, idempotency, and audit", () => {
