@@ -117,8 +117,15 @@ nav a:hover { background: var(--red); }
 .approval-status-grid strong, .wordpress-bridge-grid strong { margin-bottom: 6px; font-size: 12px; text-transform: uppercase; }
 .approval-status-grid span, .wordpress-bridge-grid span { color: var(--muted); overflow-wrap: anywhere; }
 .approval-checklist-form { display: grid; gap: 12px; margin-bottom: 20px; }
-.approval-checklist-form label { display: flex; gap: 10px; align-items: flex-start; line-height: 1.45; }
-.approval-checklist-form input { margin-top: 3px; }
+.approval-checklist-form label { display: flex; gap: 10px; align-items: flex-start; justify-content: flex-start; line-height: 1.45; }
+.approval-checklist-form input[type="checkbox"] {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  margin: 3px 0 0;
+  padding: 0;
+  accent-color: var(--red);
+}
 .approval-checklist-form button { justify-self: start; }
 .approval-decision-form { border-top: 1px solid var(--border); padding-top: 20px; }
 .approval-history { border-top: 1px solid var(--border); margin-top: 20px; padding-top: 16px; }
