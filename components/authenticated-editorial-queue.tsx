@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import type { AppRole } from "@/lib/auth";
+import { formatHoustonDateTime } from "@/lib/date-time";
 import {
   listEditorialQueueStories,
   roleCanCreateStory,
@@ -107,7 +108,7 @@ export async function AuthenticatedEditorialQueue({
                   <td>{story.desk}</td>
                   <td>{story.priority}</td>
                   <td>{story.status.replaceAll("_", " ")}</td>
-                  <td>{new Date(story.updatedAt).toLocaleString()}</td>
+                  <td>{formatHoustonDateTime(story.updatedAt)}</td>
                 </tr>
               ))}
             </tbody>

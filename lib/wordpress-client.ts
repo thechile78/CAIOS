@@ -1,6 +1,6 @@
 import "server-only";
 
-export interface WordPressDraftResult {
+export interface WordPressPostResult {
   id: string;
   link: string | null;
   dryRun: boolean;
@@ -20,16 +20,22 @@ export function isWordPressDryRun(): boolean {
   return process.env.CAIOS_WORDPRESS_DRAFT_DRY_RUN !== "false";
 }
 
-export function validateWordPressDraftPayload(payload: unknown): asserts payload is Record<string, unknown> {
-  if (!payload || typeof payload !== "object" || Array.isArray(payload)) throw new Error("invalid draft payload");
+export function validateWordPressPostPayload(
+  payload: unknown,
+  expectedStatus: "draft" | "publish",
+): asserts payload is Record<string, unknown> {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) throw new Error("invalid WordPress payload");
   const record = payload as Record<string, unknown>;
-  if (record.status !== "draft") throw new Error("WordPress status must remain draft");
+  if (record.status !== expectedStatus) throw new Error(`WordPress status must be ${expectedStatus}`);
   for (const forbidden of ["date", "date_gmt", "password", "author"]) {
     if (forbidden in record) throw new Error(`prohibited WordPress field: ${forbidden}`);
   }
 }
 
-function encodeWordPressDraft(payload: Record<string, unknown>): URLSearchParams {
+function encodeWordPressPost(
+  payload: Record<string, unknown>,
+  expectedStatus: "draft" | "publish",
+): URLSearchParams {
   const body = new URLSearchParams();
   for (const field of ["title", "content", "excerpt"] as const) {
     const value = payload[field];
@@ -41,7 +47,7 @@ function encodeWordPressDraft(payload: Record<string, unknown>): URLSearchParams
       if (typeof url === "string" && url.startsWith("https://")) body.append("media_urls[]", url);
     }
   }
-  body.set("status", "draft");
+  body.set("status", expectedStatus);
   body.set("publicize", "false");
   return body;
 }
@@ -65,9 +71,12 @@ function getWordPressError(responseText: string): string | null {
   }
 }
 
-export async function sendWordPressDraft(payload: unknown): Promise<WordPressDraftResult> {
+async function sendWordPressPost(
+  payload: unknown,
+  expectedStatus: "draft" | "publish",
+): Promise<WordPressPostResult> {
   if (!isWordPressDispatchEnabled()) throw new Error("WordPress draft dispatch is disabled");
-  validateWordPressDraftPayload(payload);
+  validateWordPressPostPayload(payload, expectedStatus);
 
   if (isWordPressDryRun()) {
     return { id: "dry-run", link: null, dryRun: true };
@@ -78,7 +87,7 @@ export async function sendWordPressDraft(payload: unknown): Promise<WordPressDra
   const timeout = setTimeout(() => controller.abort(), 10_000);
 
   try {
-    const body = encodeWordPressDraft(payload);
+    const body = encodeWordPressPost(payload, expectedStatus);
     const response = await fetch(getEndpoint(), {
       method: "POST",
       headers: {
@@ -96,7 +105,7 @@ export async function sendWordPressDraft(payload: unknown): Promise<WordPressDra
     if (!response.ok) {
       const detail = getWordPressError(responseText);
       throw new Error(
-        `WordPress draft request failed with HTTP ${response.status}${detail ? `: ${detail}` : ""}`,
+        `WordPress ${expectedStatus} request failed with HTTP ${response.status}${detail ? `: ${detail}` : ""}`,
       );
     }
     const responseBody = JSON.parse(responseText) as {
@@ -105,8 +114,8 @@ export async function sendWordPressDraft(payload: unknown): Promise<WordPressDra
       status?: string;
     };
     if (responseBody.ID === undefined) throw new Error("WordPress response did not include a post id");
-    if (responseBody.status !== "draft") {
-      throw new Error("WordPress did not confirm draft status");
+    if (responseBody.status !== expectedStatus) {
+      throw new Error(`WordPress did not confirm ${expectedStatus} status`);
     }
     return {
       id: String(responseBody.ID),
@@ -116,4 +125,12 @@ export async function sendWordPressDraft(payload: unknown): Promise<WordPressDra
   } finally {
     clearTimeout(timeout);
   }
+}
+
+export async function sendWordPressDraft(payload: unknown): Promise<WordPressPostResult> {
+  return sendWordPressPost(payload, "draft");
+}
+
+export async function publishWordPressPost(payload: unknown): Promise<WordPressPostResult> {
+  return sendWordPressPost(payload, "publish");
 }
