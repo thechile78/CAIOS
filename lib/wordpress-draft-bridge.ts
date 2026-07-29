@@ -2,6 +2,43 @@ import "server-only";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
+function escapeHtmlAttribute(value: string): string {
+  return value.replaceAll("&", "&amp;").replaceAll('"', "&quot;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+}
+
+function paragraphs(value: string): string {
+  return value
+    .split(/\n{2,}/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean)
+    .map((paragraph) => `<p>${paragraph.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll("\n", "<br>")}</p>`)
+    .join("\n");
+}
+
+function buildWordPressEmbed(value: unknown): string {
+  if (typeof value !== "string" || !value.trim()) return "";
+  const url = value.trim();
+  let provider = "";
+  let type = "rich";
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, "");
+    if (host === "youtube.com" || host === "youtu.be") {
+      provider = "youtube";
+      type = "video";
+    } else if (host === "instagram.com") {
+      provider = "instagram";
+    } else if (host === "x.com" || host === "twitter.com") {
+      provider = "twitter";
+    } else {
+      throw new Error("unsupported_social_provider");
+    }
+  } catch {
+    throw new Error("unsupported_social_provider");
+  }
+  const safeUrl = escapeHtmlAttribute(url);
+  return `<!-- wp:embed {"url":"${safeUrl}","type":"${type}","providerNameSlug":"${provider}"} -->\n<figure class="wp-block-embed is-type-${type} is-provider-${provider} wp-block-embed-${provider}"><div class="wp-block-embed__wrapper">\n${safeUrl}\n</div></figure>\n<!-- /wp:embed -->`;
+}
+
 export interface WordPressDraftBridgeState {
   handoff: null | {
     id: string;
@@ -89,7 +126,7 @@ export async function prepareWordPressDraftIntent(storyId: string): Promise<stri
 
   const { data: story, error: storyError } = await supabase
     .from("stories")
-    .select("id,title,summary,body,status,updated_at")
+    .select("id,title,summary,body,social_embed_url,image_url,status,updated_at")
     .eq("id", storyId)
     .single();
 
@@ -168,16 +205,21 @@ export async function prepareWordPressDraftIntent(storyId: string): Promise<stri
   if (existingOutbox) return existingOutbox.id;
 
   const storyContent = (story.body ?? "").trim() || (story.summary ?? "").trim();
-  const sourceLines = (sources ?? [])
+  const sourceLinks = (sources ?? [])
     .map((source) => (typeof source.url === "string" ? source.url.trim() : ""))
     .filter(Boolean)
-    .map((url) => `Source: ${url}`);
-  const content = [storyContent, ...sourceLines].filter(Boolean).join("\n\n");
+    .map((url) => `<p><strong>Read More <a href="${escapeHtmlAttribute(url)}">HERE</a></strong></p>`);
+  const socialEmbed = buildWordPressEmbed(story.social_embed_url);
+  const image = story.image_url
+    ? `<figure class="wp-block-image"><img src="${escapeHtmlAttribute(story.image_url)}" alt="" /></figure>`
+    : "";
+  const content = [image, paragraphs(storyContent), ...sourceLinks, socialEmbed].filter(Boolean).join("\n\n");
   const payload = {
     status: "draft",
     title: story.title,
     content,
     excerpt: story.summary ?? "",
+    media_urls: story.image_url ? [story.image_url] : [],
   };
 
   const { data: outboxId, error: queueError } = await supabase.rpc(
