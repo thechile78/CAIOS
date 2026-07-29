@@ -39,6 +39,22 @@ function buildWordPressEmbed(value: unknown): string {
   return `<!-- wp:embed {"url":"${safeUrl}","type":"${type}","providerNameSlug":"${provider}"} -->\n<figure class="wp-block-embed is-type-${type} is-provider-${provider} wp-block-embed-${provider}"><div class="wp-block-embed__wrapper">\n${safeUrl}\n</div></figure>\n<!-- /wp:embed -->`;
 }
 
+export function buildWordPressContent(
+  story: { body?: string | null; summary?: string | null; social_embed_url?: string | null; image_url?: string | null },
+  sources: Array<{ url?: string | null }>,
+): string {
+  const storyContent = (story.body ?? "").trim() || (story.summary ?? "").trim();
+  const sourceLinks = sources
+    .map((source) => (typeof source.url === "string" ? source.url.trim() : ""))
+    .filter(Boolean)
+    .map((url) => `<p><strong>Read More <a href="${escapeHtmlAttribute(url)}">HERE</a></strong></p>`);
+  const socialEmbed = buildWordPressEmbed(story.social_embed_url);
+  const image = story.image_url
+    ? `<figure class="wp-block-image"><img src="${escapeHtmlAttribute(story.image_url)}" alt="" /></figure>`
+    : "";
+  return [image, paragraphs(storyContent), ...sourceLinks, socialEmbed].filter(Boolean).join("\n\n");
+}
+
 export interface WordPressDraftBridgeState {
   handoff: null | {
     id: string;
@@ -204,16 +220,7 @@ export async function prepareWordPressDraftIntent(storyId: string): Promise<stri
 
   if (existingOutbox) return existingOutbox.id;
 
-  const storyContent = (story.body ?? "").trim() || (story.summary ?? "").trim();
-  const sourceLinks = (sources ?? [])
-    .map((source) => (typeof source.url === "string" ? source.url.trim() : ""))
-    .filter(Boolean)
-    .map((url) => `<p><strong>Read More <a href="${escapeHtmlAttribute(url)}">HERE</a></strong></p>`);
-  const socialEmbed = buildWordPressEmbed(story.social_embed_url);
-  const image = story.image_url
-    ? `<figure class="wp-block-image"><img src="${escapeHtmlAttribute(story.image_url)}" alt="" /></figure>`
-    : "";
-  const content = [image, paragraphs(storyContent), ...sourceLinks, socialEmbed].filter(Boolean).join("\n\n");
+  const content = buildWordPressContent(story, sources ?? []);
   const payload = {
     status: "draft",
     title: story.title,
