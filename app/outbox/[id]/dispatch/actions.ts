@@ -25,8 +25,10 @@ export async function dispatchWordPressDraft(formData: FormData) {
   }
 
   const claimed = claim.data as { payload?: unknown };
+  let sentId = "";
   try {
     const result = await sendWordPressDraft(claimed.payload);
+    sentId = result.dryRun ? "dry-run" : result.id;
     const finish = await supabase.rpc("finish_wordpress_draft_dispatch", {
       p_outbox_id: outboxId,
       p_success: true,
@@ -35,7 +37,6 @@ export async function dispatchWordPressDraft(formData: FormData) {
       p_error: null,
     });
     if (finish.error) throw finish.error;
-    redirect(`/outbox/${encodeURIComponent(outboxId)}/dispatch?sent=${encodeURIComponent(result.dryRun ? "dry-run" : result.id)}`);
   } catch (error) {
     const message = error instanceof Error ? error.message : "WordPress dispatch failed";
     await supabase.rpc("finish_wordpress_draft_dispatch", {
@@ -47,4 +48,6 @@ export async function dispatchWordPressDraft(formData: FormData) {
     });
     redirect(`/outbox/${encodeURIComponent(outboxId)}/dispatch?error=${encodeURIComponent(message)}`);
   }
+
+  redirect(`/outbox/${encodeURIComponent(outboxId)}/dispatch?sent=${encodeURIComponent(sentId)}`);
 }
