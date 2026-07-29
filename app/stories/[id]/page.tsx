@@ -2,12 +2,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { requireCurrentProfile, roleCanEdit, roleCanReview } from "@/lib/auth";
+import { formatHoustonDateTime } from "@/lib/date-time";
 import { getStoryIntelligence } from "@/lib/story-intelligence";
-import { getWordPressDraftBridgeState } from "@/lib/wordpress-draft-bridge";
+import { getWordPressPublicationState } from "@/lib/wordpress-publication";
 import { submitStoryForApprovalAction } from "./actions";
 import { recordEditorialDecisionAction, saveEditorialChecklistAction } from "./approval-actions";
 import { EditorialScorecard } from "./editorial-scorecard";
-import { prepareWordPressDraftIntentAction } from "./wordpress-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -19,8 +19,8 @@ interface StoryPageProps {
     approval_error?: string;
     checklist_saved?: string;
     decision_recorded?: string;
-    wordpress_error?: string;
-    wordpress_prepared?: string;
+    publication_error?: string;
+    published?: string;
   }>;
 }
 
@@ -31,13 +31,12 @@ export default async function StoryIntelligencePage({ params, searchParams }: St
   const intelligence = await getStoryIntelligence(id);
   if (!intelligence) notFound();
 
-  const bridge = await getWordPressDraftBridgeState(id);
+  const publication = await getWordPressPublicationState(id);
   const { story, sources, similarStories, checklist, approvals } = intelligence;
   const status = String(story.status);
   const editable = roleCanEdit(profile.role) && !["approved", "wordpress_draft", "published", "archived"].includes(status);
   const checklistEditable = (roleCanEdit(profile.role) || roleCanReview(profile.role)) && !["approved", "wordpress_draft", "published", "archived"].includes(status);
   const canDecide = roleCanReview(profile.role) && status === "awaiting_approval";
-  const canPrepareWordPress = ["administrator", "editor"].includes(profile.role) && status === "approved";
   const errorMessage = notices.editorial_error === "conflict"
     ? "This story changed after the page loaded. Reload before saving so another editor’s work is not overwritten."
     : notices.editorial_error === "invalid_transition"
@@ -54,15 +53,9 @@ export default async function StoryIntelligencePage({ params, searchParams }: St
         : notices.approval_error
           ? "The approval action could not be completed."
           : null;
-  const wordpressErrorMessage = notices.wordpress_error === "not_approved"
-    ? "This story is not approved. Complete the editorial checklist and approval workflow before preparing a WordPress draft."
-    : notices.wordpress_error === "checklist"
-      ? "The approved editorial checklist is incomplete."
-      : notices.wordpress_error === "approval"
-        ? "The matching human approval record is missing."
-        : notices.wordpress_error
-          ? "The WordPress draft intent could not be prepared. No external WordPress request was made."
-          : null;
+  const publicationErrorMessage = notices.publication_error
+    ? "Your approval was recorded, but WordPress did not confirm publication. The story was not marked published. Try again after checking the WordPress connection."
+    : null;
 
   return (
     <main className="content story-workspace">
@@ -75,11 +68,11 @@ export default async function StoryIntelligencePage({ params, searchParams }: St
 
       {errorMessage ? <div className="editorial-notice editorial-notice-error" role="alert">{errorMessage}</div> : null}
       {approvalError ? <div className="editorial-notice editorial-notice-error" role="alert">{approvalError}</div> : null}
-      {wordpressErrorMessage ? <div className="editorial-notice editorial-notice-error" role="alert">{wordpressErrorMessage}</div> : null}
+      {publicationErrorMessage ? <div className="editorial-notice editorial-notice-error" role="alert">{publicationErrorMessage}</div> : null}
       {notices.editorial_saved ? <div className="editorial-notice editorial-notice-success" role="status">Changes saved. Current stage: {notices.editorial_saved.replaceAll("_", " ")}.</div> : null}
       {notices.checklist_saved ? <div className="editorial-notice editorial-notice-success" role="status">Editorial checklist saved and audited.</div> : null}
       {notices.decision_recorded ? <div className="editorial-notice editorial-notice-success" role="status">Editorial decision recorded: {notices.decision_recorded.replaceAll("_", " ")}.</div> : null}
-      {notices.wordpress_prepared ? <div className="editorial-notice editorial-notice-success" role="status">The immutable package and WordPress draft intent are prepared. No external WordPress request has been made.</div> : null}
+      {notices.published ? <div className="editorial-notice editorial-notice-success" role="status">Approved and published to WordPress successfully.</div> : null}
 
       <section className="kpi-grid">
         <article className="kpi-card"><span>Confidence</span><strong>{intelligence.confidence}%</strong><small>Source-based heuristic, not a factual guarantee</small></article>
@@ -145,28 +138,27 @@ export default async function StoryIntelligencePage({ params, searchParams }: St
             <input type="hidden" name="expectedUpdatedAt" value={story.updated_at} />
             <label>Reviewer note<textarea name="note" rows={4} maxLength={4000} placeholder="Record the reason for the decision or requested changes." /></label>
             <div className="editorial-action-row">
-              <button className="primary-button" type="submit" name="decision" value="approved">Approve story</button>
+              <button className="primary-button" type="submit" name="decision" value="approved">Approve &amp; Publish</button>
               <button className="secondary-button" type="submit" name="decision" value="changes_requested">Request changes</button>
               <button className="secondary-button" type="submit" name="decision" value="rejected">Reject to fact check</button>
             </div>
+            <p className="editorial-form-note">This single click records your final human approval and immediately publishes the reviewed article to WordPress.</p>
           </form>
         ) : <p>{status === "approved" ? "This story has a recorded human approval." : "Decision controls become available to reviewers when the story reaches awaiting approval."}</p>}
-        {approvals.length ? <div className="approval-history"><h4>Decision history</h4><ul>{approvals.map((approval) => <li key={approval.id}><strong>{String(approval.decision).replaceAll("_", " ")}</strong> · {new Date(approval.created_at).toLocaleString()}{approval.note ? ` — ${approval.note}` : ""}</li>)}</ul></div> : null}
+        {approvals.length ? <div className="approval-history"><h4>Decision history</h4><ul>{approvals.map((approval) => <li key={approval.id}><strong>{String(approval.decision).replaceAll("_", " ")}</strong> · {formatHoustonDateTime(approval.created_at)}{approval.note ? ` — ${approval.note}` : ""}</li>)}</ul></div> : null}
       </section>
 
       <section className="panel wordpress-bridge-panel">
-        <div className="panel-heading"><div><p className="eyebrow">Approval-gated delivery</p><h3>WordPress Draft Bridge</h3></div><span className="safety-badge safety-strong">Draft only</span></div>
+        <div className="panel-heading"><div><p className="eyebrow">Approval-gated delivery</p><h3>WordPress Publication</h3></div><span className="safety-badge safety-strong">Human approved</span></div>
         <div className="wordpress-bridge-grid">
-          <div><strong>Approval status</strong><span>{status === "approved" ? "Approved" : "Not approved"}</span></div>
-          <div><strong>Handoff</strong><span>{bridge.handoff?.state ?? "Not created"}</span></div>
-          <div><strong>Immutable package</strong><span>{bridge.editorialPackage ? `Version ${bridge.editorialPackage.version}` : "Not created"}</span></div>
-          <div><strong>Draft outbox</strong><span>{bridge.outbox?.state ?? "Not queued"}</span></div>
+          <div><strong>Editorial status</strong><span>{status.replaceAll("_", " ")}</span></div>
+          <div><strong>WordPress state</strong><span>{publication?.state ?? "Not requested"}</span></div>
+          <div><strong>WordPress post ID</strong><span>{publication?.externalId ?? "Not assigned"}</span></div>
+          <div><strong>Updated</strong><span>{publication ? formatHoustonDateTime(publication.updatedAt) : "—"}</span></div>
         </div>
-        {bridge.outbox?.lastError ? <p className="editorial-notice editorial-notice-error">Last dispatch error: {bridge.outbox.lastError}</p> : null}
-        {bridge.outbox?.externalPostUrl ? <p><a className="secondary-button" href={bridge.outbox.externalPostUrl} target="_blank" rel="noreferrer">Open WordPress draft</a></p> : null}
-        {canPrepareWordPress && !bridge.outbox ? <form action={prepareWordPressDraftIntentAction}><input type="hidden" name="storyId" value={story.id} /><button className="primary-button" type="submit">Prepare WordPress draft intent</button></form> : null}
-        {!canPrepareWordPress && !bridge.outbox ? <p>Available only after the story is fully approved by an administrator or editor. Preparing the intent does not contact WordPress.</p> : null}
-        {bridge.outbox ? <p>The draft intent is recorded in the audited outbox. External dispatch remains disabled until WordPress credentials and an explicit dispatch control are configured.</p> : null}
+        {publication?.externalUrl ? <p><a className="primary-button" href={publication.externalUrl} target="_blank" rel="noreferrer">Open live WordPress article</a></p> : null}
+        {!publication ? <p>Nothing is sent to WordPress until a reviewer clicks Approve &amp; Publish.</p> : null}
+        {publication?.state === "failed" ? <p className="editorial-notice editorial-notice-error">WordPress did not confirm publication. CAIOS did not mark this story published.</p> : null}
       </section>
 
       <section className="dashboard-grid">
