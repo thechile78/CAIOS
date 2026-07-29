@@ -5,6 +5,7 @@ import {
   roleCanRequestHandoff,
 } from "@/lib/approval-handoff";
 import { requireCurrentProfile } from "@/lib/auth";
+import { formatHoustonDateTime } from "@/lib/date-time";
 import { requestApprovedStoryHandoff } from "./actions";
 
 interface PageProps {
@@ -34,7 +35,7 @@ export default async function ApprovalQueuePage({ searchParams }: PageProps) {
             <article key={story.id}>
               <h2>{story.title}</h2>
               <p>{story.desk} · {story.priority} · {story.status}</p>
-              <p>Updated: {new Date(story.updatedAt).toLocaleString()}</p>
+              <p>Updated: {formatHoustonDateTime(story.updatedAt)}</p>
 
               {story.status === "awaiting_approval" ? (
                 <p><Link href={`/stories/${story.id}/review`}>Open human review</Link></p>
