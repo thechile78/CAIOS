@@ -35,6 +35,12 @@ function encodeWordPressDraft(payload: Record<string, unknown>): URLSearchParams
     const value = payload[field];
     if (typeof value === "string") body.set(field, value);
   }
+  const mediaUrls = payload.media_urls;
+  if (Array.isArray(mediaUrls)) {
+    for (const url of mediaUrls) {
+      if (typeof url === "string" && url.startsWith("https://")) body.append("media_urls[]", url);
+    }
+  }
   body.set("status", "draft");
   body.set("publicize", "false");
   return body;

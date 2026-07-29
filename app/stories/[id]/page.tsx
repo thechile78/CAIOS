@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { requireCurrentProfile, roleCanEdit, roleCanReview } from "@/lib/auth";
 import { getStoryIntelligence } from "@/lib/story-intelligence";
 import { getWordPressDraftBridgeState } from "@/lib/wordpress-draft-bridge";
-import { saveStoryEditorialAction } from "./actions";
+import { submitStoryForApprovalAction } from "./actions";
 import { recordEditorialDecisionAction, saveEditorialChecklistAction } from "./approval-actions";
 import { EditorialScorecard } from "./editorial-scorecard";
 import { prepareWordPressDraftIntentAction } from "./wordpress-actions";
@@ -24,15 +24,6 @@ interface StoryPageProps {
   }>;
 }
 
-const nextStage: Record<string, { value: string; label: string } | undefined> = {
-  discovered: { value: "researching", label: "Move to research" },
-  researching: { value: "fact_check", label: "Move to fact check" },
-  fact_check: { value: "drafting", label: "Move to drafting" },
-  drafting: { value: "seo_review", label: "Move to SEO review" },
-  seo_review: { value: "asset_review", label: "Move to asset review" },
-  asset_review: { value: "awaiting_approval", label: "Submit for approval" },
-};
-
 export default async function StoryIntelligencePage({ params, searchParams }: StoryPageProps) {
   const profile = await requireCurrentProfile();
   const { id } = await params;
@@ -47,8 +38,6 @@ export default async function StoryIntelligencePage({ params, searchParams }: St
   const checklistEditable = (roleCanEdit(profile.role) || roleCanReview(profile.role)) && !["approved", "wordpress_draft", "published", "archived"].includes(status);
   const canDecide = roleCanReview(profile.role) && status === "awaiting_approval";
   const canPrepareWordPress = ["administrator", "editor"].includes(profile.role) && status === "approved";
-  const advance = nextStage[status];
-
   const errorMessage = notices.editorial_error === "conflict"
     ? "This story changed after the page loaded. Reload before saving so another editor’s work is not overwritten."
     : notices.editorial_error === "invalid_transition"
@@ -104,7 +93,7 @@ export default async function StoryIntelligencePage({ params, searchParams }: St
       <section className="panel editorial-workspace-panel">
         <div className="panel-heading"><div><p className="eyebrow">Validated write path</p><h3>Edit story record</h3></div><span className="safety-badge safety-strong">No publishing</span></div>
         {editable ? (
-          <form action={saveStoryEditorialAction} className="editorial-form">
+          <form action={submitStoryForApprovalAction} className="editorial-form">
             <input type="hidden" name="storyId" value={story.id} />
             <input type="hidden" name="expectedUpdatedAt" value={story.updated_at} />
             <label>Headline<input name="title" defaultValue={story.title} minLength={8} maxLength={220} required /></label>
@@ -114,11 +103,19 @@ export default async function StoryIntelligencePage({ params, searchParams }: St
             </div>
             <label>Summary<textarea name="summary" defaultValue={story.summary ?? ""} rows={4} maxLength={1200} /></label>
             <label>Working notes / body<textarea name="body" defaultValue={story.body ?? ""} rows={9} maxLength={30000} /></label>
+            <label>Social post to embed<input name="socialEmbedUrl" type="url" defaultValue={story.social_embed_url ?? ""} placeholder="Paste one X, Instagram, or YouTube post URL" /></label>
+            <label>Story image URL<input name="imageUrl" type="url" defaultValue={story.image_url ?? ""} placeholder="Paste the approved HTTPS image URL" /></label>
+            <fieldset className="approval-checklist-form">
+              <legend>One-click editorial checklist</legend>
+              <label><input type="checkbox" name="sourcesVerified" defaultChecked={checklist?.sources_verified ?? false} required /> Sources and attribution verified</label>
+              <label><input type="checkbox" name="factsVerified" defaultChecked={checklist?.facts_verified ?? false} required /> Factual claims checked</label>
+              <label><input type="checkbox" name="rightsReviewed" defaultChecked={checklist?.rights_reviewed ?? false} required /> Image and media rights reviewed</label>
+              <label><input type="checkbox" name="seoReviewed" defaultChecked={checklist?.seo_reviewed ?? false} required /> Headline, summary, and SEO reviewed</label>
+            </fieldset>
             <div className="editorial-action-row">
-              <button className="secondary-button" type="submit" name="targetStatus" value={status}>Save changes</button>
-              {advance ? <button className="primary-button" type="submit" name="targetStatus" value={advance.value}>{advance.label}</button> : null}
+              <button className="primary-button" type="submit">Save and submit for approval</button>
             </div>
-            <p className="editorial-form-note">Every update uses optimistic concurrency and the database audit function. Publishing remains unavailable here.</p>
+            <p className="editorial-form-note">One submission saves the story, media, checklist, and approval request. Publishing remains unavailable here.</p>
           </form>
         ) : <p>This record is read-only for your role or current workflow stage.</p>}
       </section>
@@ -131,7 +128,7 @@ export default async function StoryIntelligencePage({ params, searchParams }: St
           <div><strong>Rights reviewed</strong><span>{checklist?.rights_reviewed ? "Complete" : "Required"}</span></div>
           <div><strong>SEO reviewed</strong><span>{checklist?.seo_reviewed ? "Complete" : "Required"}</span></div>
         </div>
-        {checklistEditable ? (
+        {checklistEditable && !editable ? (
           <form action={saveEditorialChecklistAction} className="approval-checklist-form">
             <input type="hidden" name="storyId" value={story.id} />
             <input type="hidden" name="expectedUpdatedAt" value={story.updated_at} />
