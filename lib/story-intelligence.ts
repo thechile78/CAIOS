@@ -28,7 +28,7 @@ export async function getStoryIntelligence(storyId: string) {
   const supabase = await createSupabaseServerClient();
   const { data: story, error } = await supabase
     .from("stories")
-    .select("id,title,desk,priority,status,summary,body,updated_at")
+    .select("id,title,desk,priority,status,summary,body,social_embed_url,image_url,updated_at")
     .eq("id", storyId)
     .single();
   if (error || !story) return null;
