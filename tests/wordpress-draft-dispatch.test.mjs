@@ -15,20 +15,22 @@ test("dispatch is disabled and dry-run by default", () => {
   assert.match(client, /DRAFT_DRY_RUN !== "false"/);
 });
 
-test("transport uses WordPress.com OAuth and enforces draft-only delivery", () => {
+test("transport uses WordPress.com OAuth and enforces the requested bounded status", () => {
   assert.match(client, /public-api\.wordpress\.com\/rest\/v1\.1/);
   assert.match(client, /CAIOS_WORDPRESS_OAUTH_ACCESS_TOKEN/);
   assert.match(client, /authorization: `Bearer \$\{accessToken\}`/);
-  assert.match(client, /record\.status !== "draft"/);
+  assert.match(client, /record\.status !== expectedStatus/);
   assert.match(client, /new URLSearchParams\(\)/);
-  assert.match(client, /body\.set\("status", "draft"\)/);
+  assert.match(client, /body\.set\("status", expectedStatus\)/);
   assert.match(client, /body\.set\("publicize", "false"\)/);
   assert.match(client, /application\/x-www-form-urlencoded/);
   assert.doesNotMatch(client, /content-type": "application\/json"/);
   assert.match(client, /posts\/new\//);
   assert.match(client, /getWordPressError/);
   assert.match(client, /slice\(0, 300\)/);
-  assert.match(client, /responseBody\.status !== "draft"/);
+  assert.match(client, /responseBody\.status !== expectedStatus/);
+  assert.match(client, /sendWordPressPost\(payload, "draft"\)/);
+  assert.match(client, /sendWordPressPost\(payload, "publish"\)/);
   assert.match(client, /10_000/);
   assert.match(client, /redirect: "error"/);
   assert.doesNotMatch(client, /Basic \$\{/);
