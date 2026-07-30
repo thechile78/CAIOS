@@ -4,7 +4,7 @@ import type { PlatformHealth } from "@/lib/domain";
 export async function GET() {
   const payload: PlatformHealth = {
     service: "CAIOS",
-    version: "4.1.0",
+    version: "5.2.0",
     status: "ok",
     publishingMode: "human-approval-required",
     timestamp: new Date().toISOString(),
