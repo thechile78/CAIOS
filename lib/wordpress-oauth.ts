@@ -107,6 +107,10 @@ interface WordPressTokenResponse {
   token_type?: string;
 }
 
+interface WordPressOAuthErrorResponse {
+  error?: unknown;
+}
+
 export interface VerifiedWordPressToken {
   accessToken: string;
   blogId: string;
@@ -128,6 +132,18 @@ export function assertWordPressScopes(scopes: readonly string[]): void {
     throw new Error(
       `WordPress connection is missing required permission: ${missing.join(", ")}.`,
     );
+  }
+}
+
+function safeWordPressOAuthErrorCode(body: string): string | null {
+  try {
+    const parsed = JSON.parse(body) as WordPressOAuthErrorResponse;
+    return typeof parsed.error === "string" &&
+      /^[a-z0-9_-]{1,64}$/i.test(parsed.error)
+      ? parsed.error
+      : null;
+  } catch {
+    return null;
   }
 }
 
@@ -178,7 +194,16 @@ export async function exchangeWordPressAuthorizationCode(
     signal: AbortSignal.timeout(10_000),
   });
   if (!response.ok) {
-    throw new Error(`WordPress authorization exchange failed (${response.status}).`);
+    const providerCode = safeWordPressOAuthErrorCode(await response.text());
+    console.error("[wordpress-oauth] authorization exchange failed", {
+      status: response.status,
+      providerCode,
+    });
+    throw new Error(
+      providerCode
+        ? `WordPress authorization exchange failed (${response.status}: ${providerCode}).`
+        : `WordPress authorization exchange failed (${response.status}).`,
+    );
   }
   const token = (await response.json()) as WordPressTokenResponse;
   if (!token.access_token) throw new Error("WordPress did not return an access token.");

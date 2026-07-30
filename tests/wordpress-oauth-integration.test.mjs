@@ -17,6 +17,14 @@ test("WordPress authorization requests posts and media with a fixed callback", a
   assert.match(oauth, /assertWordPressScopes\(scopes\)/);
 });
 
+test("WordPress token exchange reports only a sanitized provider error code", async () => {
+  const oauth = await read("lib/wordpress-oauth.ts");
+  assert.match(oauth, /safeWordPressOAuthErrorCode\(await response\.text\(\)\)/);
+  assert.match(oauth, /\^\[a-z0-9_-\]\{1,64\}\$/i);
+  assert.match(oauth, /providerCode,/);
+  assert.doesNotMatch(oauth, /console\.error\([^)]*(clientSecret|accessToken|code,)/s);
+});
+
 test("WordPress OAuth state is signed, administrator-bound, expiring, and consumed", async () => {
   const oauth = await read("lib/wordpress-oauth.ts");
   const connect = await read("app/api/integrations/wordpress/connect/route.ts");
