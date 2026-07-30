@@ -2,13 +2,22 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { requireCurrentProfile, roleCanEdit, roleCanReview } from "@/lib/auth";
+import {
+  requireCurrentProfile,
+  roleCanAdminister,
+  roleCanEdit,
+  roleCanReview,
+} from "@/lib/auth";
 import { formatHoustonDateTime } from "@/lib/date-time";
 import { getApprovedStoryImage, searchOpenverseImages } from "@/lib/image-rights";
 import { getStoryIntelligence } from "@/lib/story-intelligence";
 import { getWordPressPublicationState } from "@/lib/wordpress-publication";
 import { submitStoryForApprovalAction } from "./actions";
-import { recordEditorialDecisionAction, saveEditorialChecklistAction } from "./approval-actions";
+import {
+  recordEditorialDecisionAction,
+  retryWordPressPublicationAction,
+  saveEditorialChecklistAction,
+} from "./approval-actions";
 import { EditorialScorecard } from "./editorial-scorecard";
 import { approveStoryImageAction } from "./image-rights-actions";
 
@@ -47,6 +56,10 @@ export default async function StoryIntelligencePage({ params, searchParams }: St
   const editable = roleCanEdit(profile.role) && !["approved", "wordpress_draft", "published", "archived"].includes(status);
   const checklistEditable = (roleCanEdit(profile.role) || roleCanReview(profile.role)) && !["approved", "wordpress_draft", "published", "archived"].includes(status);
   const canDecide = roleCanReview(profile.role) && status === "awaiting_approval";
+  const canRetryPublication =
+    roleCanReview(profile.role) &&
+    status === "approved" &&
+    publication?.state === "failed";
   const errorMessage = notices.editorial_error === "conflict"
     ? "This story changed after the page loaded. Reload before saving so another editor’s work is not overwritten."
     : notices.editorial_error === "invalid_transition"
@@ -65,9 +78,14 @@ export default async function StoryIntelligencePage({ params, searchParams }: St
           : notices.approval_error
           ? "The approval action could not be completed."
           : null;
-  const publicationErrorMessage = notices.publication_error
-    ? "Your approval was recorded, but WordPress did not confirm publication. The story was not marked published. Try again after checking the WordPress connection."
-    : null;
+  const publicationErrorMessage =
+    notices.publication_error === "wordpress_connection"
+      ? "Your approval is safe, but WordPress needs to be reconnected with both posts and media permissions before this story can publish."
+      : notices.publication_error === "image"
+        ? "Your approval is safe, but WordPress could not receive the rights-cleared featured image. The story was not published."
+        : notices.publication_error
+          ? "Your approval is safe, but WordPress did not confirm publication. The story was not marked published."
+          : null;
   const imageError = notices.image_error === "locked"
     ? "Image rights are locked after story approval."
     : notices.image_error === "https"
@@ -291,7 +309,33 @@ export default async function StoryIntelligencePage({ params, searchParams }: St
         </div>
         {publication?.externalUrl ? <p><a className="primary-button" href={publication.externalUrl} target="_blank" rel="noreferrer">Open live WordPress article</a></p> : null}
         {!publication ? <p>Nothing is sent to WordPress until a reviewer clicks Approve &amp; Publish.</p> : null}
-        {publication?.state === "failed" ? <p className="editorial-notice editorial-notice-error">WordPress did not confirm publication. CAIOS did not mark this story published.</p> : null}
+        {publication?.state === "failed" ? (
+          <>
+            <p className="editorial-notice editorial-notice-error">
+              WordPress did not confirm publication. CAIOS did not mark this story published,
+              and your editorial approval remains recorded.
+            </p>
+            <div className="editorial-action-row">
+              {roleCanAdminister(profile.role) ? (
+                <Link className="secondary-button" href="/integrations/wordpress">
+                  Check WordPress connection
+                </Link>
+              ) : null}
+              {canRetryPublication ? (
+                <form action={retryWordPressPublicationAction}>
+                  <input type="hidden" name="storyId" value={story.id} />
+                  <button className="primary-button" type="submit">
+                    Retry WordPress publication
+                  </button>
+                </form>
+              ) : null}
+            </div>
+            <p className="editorial-form-note">
+              Retry is a separate human action. It reuses the approved article and
+              rights record; it never repeats or bypasses editorial approval.
+            </p>
+          </>
+        ) : null}
       </section>
 
       <section className="dashboard-grid">
