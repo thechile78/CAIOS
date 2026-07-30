@@ -7,12 +7,14 @@ const client = await readFile(new URL("../lib/wordpress-client.ts", import.meta.
 const storyPage = await readFile(new URL("../app/stories/[id]/page.tsx", import.meta.url), "utf8");
 const migration = await readFile(new URL("../supabase/migrations/20260728190000_streamlined_wordpress_story_media.sql", import.meta.url), "utf8");
 
-test("WordPress package contains linked source, inline social embed, and image", () => {
+test("WordPress package contains linked source, inline social embed, and cleared featured image", () => {
   assert.match(bridge, /Read More <a href=.*>HERE<\/a>/);
   assert.match(bridge, /wp:embed/);
   assert.match(bridge, /youtube|instagram|twitter/);
-  assert.match(bridge, /media_urls/);
+  assert.match(bridge, /featured_image/);
+  assert.match(bridge, /rights_record_id/);
   assert.match(client, /media_urls\[\]/);
+  assert.match(client, /body\.set\("featured_image", featuredImageId\)/);
 });
 
 test("story review is a single audited submission before human approval", () => {

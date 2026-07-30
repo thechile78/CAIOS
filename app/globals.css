@@ -140,6 +140,26 @@ nav a:hover { background: var(--red); }
 .social-draft-card form { margin-top: 16px; }
 
 .wordpress-bridge-panel { border-left: 6px solid var(--red); }
+.image-rights-panel { border-left: 6px solid #166534; }
+.image-rights-approved { background: #dcfce7; color: #166534; }
+.approved-image-card { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; border: 1px solid #bbf7d0; border-radius: 14px; background: #f0fdf4; padding: 16px; margin-bottom: 20px; }
+.approved-image-card img, .image-choice-card img { width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 10px; background: #e5e7eb; }
+.approved-image-card h4, .approved-image-card p { margin: 0 0 9px; }
+.approved-image-card p { overflow-wrap: anywhere; color: #374151; line-height: 1.45; }
+.approved-image-card a, .image-choice-card a { color: var(--blue); text-decoration: underline; }
+.image-search-form { display: grid; gap: 8px; padding: 16px; border: 1px solid var(--border); border-radius: 14px; background: var(--soft); margin-bottom: 18px; }
+.image-search-form label { font-weight: 900; }
+.image-search-form > div { display: grid; grid-template-columns: 1fr auto; gap: 10px; }
+.image-search-form input { min-width: 0; border: 1px solid #cbd5e1; border-radius: 10px; padding: 11px 12px; font: inherit; }
+.image-search-form p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
+.image-choice-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-bottom: 20px; }
+.image-choice-card { min-width: 0; border: 1px solid var(--border); border-radius: 14px; overflow: hidden; background: var(--surface); }
+.image-choice-card > div { padding: 14px; }
+.image-choice-card h4 { margin: 0 0 8px; font-size: 17px; }
+.image-choice-card p { margin: 0 0 10px; color: var(--muted); line-height: 1.4; overflow-wrap: anywhere; }
+.image-choice-card .primary-button { width: 100%; }
+.manual-image-rights { border-top: 1px solid var(--border); padding-top: 18px; }
+.manual-image-rights summary { cursor: pointer; font-weight: 900; margin-bottom: 16px; }
 
 .workflow-track { list-style: none; display: grid; grid-template-columns: repeat(8, minmax(120px, 1fr)); gap: 10px; padding: 0; margin: 0; overflow-x: auto; }
 .workflow-track li { border: 1px solid var(--border); border-radius: 12px; padding: 12px; background: #f9fafb; min-height: 88px; }
@@ -156,6 +176,7 @@ nav a:hover { background: var(--red); }
   .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .dashboard-grid { grid-template-columns: 1fr; }
   .approval-status-grid, .wordpress-bridge-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .image-choice-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 900px) {
@@ -178,4 +199,5 @@ nav a:hover { background: var(--red); }
   .scorecard-grid { grid-template-columns: 1fr; }
   .approval-status-grid, .wordpress-bridge-grid { grid-template-columns: 1fr; }
   .approval-checklist-form button { width: 100%; }
+  .approved-image-card, .image-choice-grid, .image-search-form > div { grid-template-columns: 1fr; }
 }

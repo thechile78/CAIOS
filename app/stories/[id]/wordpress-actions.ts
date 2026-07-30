@@ -15,7 +15,9 @@ export async function prepareWordPressDraftIntentAction(formData: FormData) {
     await prepareWordPressDraftIntent(storyId);
   } catch (error) {
     const message = error instanceof Error ? error.message : "unknown_error";
-    const code = message.includes("approved")
+    const code = message.includes("image")
+      ? "image"
+      : message.includes("approved")
       ? "not_approved"
       : message.includes("checklist")
         ? "checklist"

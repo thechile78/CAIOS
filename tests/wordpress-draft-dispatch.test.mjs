@@ -31,7 +31,12 @@ test("transport uses WordPress.com OAuth and enforces the requested bounded stat
   assert.match(client, /responseBody\.status !== expectedStatus/);
   assert.match(client, /sendWordPressPost\(payload, "draft"\)/);
   assert.match(client, /sendWordPressPost\(payload, "publish"\)/);
-  assert.match(client, /10_000/);
+  assert.match(client, /featured_image/);
+  assert.equal(
+    client.match(/signal: AbortSignal\.timeout\(15_000\)/g)?.length,
+    2,
+    "media upload and post creation must have independent request timeouts",
+  );
   assert.match(client, /redirect: "error"/);
   assert.doesNotMatch(client, /Basic \$\{/);
   assert.doesNotMatch(client, /APPLICATION_PASSWORD/);

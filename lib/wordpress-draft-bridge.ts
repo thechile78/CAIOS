@@ -1,5 +1,6 @@
 import "server-only";
 
+import { getApprovedStoryImage } from "@/lib/image-rights";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 function escapeHtmlAttribute(value: string): string {
@@ -139,6 +140,7 @@ export async function getWordPressDraftBridgeState(
 
 export async function prepareWordPressDraftIntent(storyId: string): Promise<string> {
   const supabase = await createSupabaseServerClient();
+  const approvedImage = await getApprovedStoryImage(storyId);
 
   const { data: story, error: storyError } = await supabase
     .from("stories")
@@ -148,6 +150,9 @@ export async function prepareWordPressDraftIntent(storyId: string): Promise<stri
 
   if (storyError || !story) throw new Error("story_not_found");
   if (story.status !== "approved") throw new Error("story_not_approved");
+  if (!approvedImage || !approvedImage.commercialUseAllowed) {
+    throw new Error("approved_image_missing");
+  }
 
   const { data: sources } = await supabase
     .from("story_sources")
@@ -220,13 +225,33 @@ export async function prepareWordPressDraftIntent(storyId: string): Promise<stri
 
   if (existingOutbox) return existingOutbox.id;
 
-  const content = buildWordPressContent(story, sources ?? []);
+  const licenseReference = approvedImage.licenseUrl
+    ? `${approvedImage.licenseName}: ${approvedImage.licenseUrl}`
+    : approvedImage.licenseName;
+  const imageCredit = `<p><strong>Image:</strong> ${escapeHtmlAttribute(approvedImage.attributionText)}<br><strong>Source:</strong> <a href="${escapeHtmlAttribute(approvedImage.sourcePageUrl)}">${escapeHtmlAttribute(approvedImage.sourcePageUrl)}</a><br><strong>License:</strong> ${escapeHtmlAttribute(licenseReference)}</p>`;
+  const content = [
+    buildWordPressContent({ ...story, image_url: null }, sources ?? []),
+    imageCredit,
+  ].filter(Boolean).join("\n\n");
   const payload = {
     status: "draft",
     title: story.title,
     content,
     excerpt: story.summary ?? "",
-    media_urls: story.image_url ? [story.image_url] : [],
+    featured_image: {
+      rights_record_id: approvedImage.id,
+      url: approvedImage.imageUrl,
+      source_page_url: approvedImage.sourcePageUrl,
+      creator: approvedImage.creator,
+      license_name: approvedImage.licenseName,
+      license_url: approvedImage.licenseUrl,
+      attribution_text: approvedImage.attributionText,
+      alt_text: approvedImage.altText,
+      commercial_use_allowed: approvedImage.commercialUseAllowed,
+      modifications_allowed: approvedImage.modificationsAllowed,
+      retrieved_at: approvedImage.retrievedAt,
+      approved_at: approvedImage.approvedAt,
+    },
   };
 
   const { data: outboxId, error: queueError } = await supabase.rpc(
