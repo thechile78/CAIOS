@@ -1,5 +1,11 @@
 import "server-only";
 
+import { getWordPressConnection } from "@/lib/social-token-vault";
+import {
+  assertWordPressScopes,
+  inspectWordPressToken,
+} from "@/lib/wordpress-oauth";
+
 export interface WordPressPostResult {
   id: string;
   link: string | null;
@@ -110,6 +116,27 @@ function getWordPressError(responseText: string): string | null {
   }
 }
 
+async function getValidWordPressAccessToken(): Promise<string> {
+  const connection = await getWordPressConnection();
+  if (connection) {
+    assertWordPressScopes(connection.scopes);
+    const verified = await inspectWordPressToken(connection.accessToken);
+    if (verified.blogId !== connection.blogId) {
+      throw new Error("WordPress connection belongs to a different site. Reconnect WordPress.");
+    }
+    return verified.accessToken;
+  }
+
+  const legacyToken = process.env.CAIOS_WORDPRESS_OAUTH_ACCESS_TOKEN?.trim();
+  if (!legacyToken) {
+    throw new Error(
+      "WordPress is not connected. An administrator must reconnect WordPress with posts and media permissions.",
+    );
+  }
+  const verified = await inspectWordPressToken(legacyToken);
+  return verified.accessToken;
+}
+
 async function uploadWordPressFeaturedImage(
   image: ApprovedFeaturedImage,
   accessToken: string,
@@ -165,7 +192,7 @@ async function sendWordPressPost(
     return { id: "dry-run", link: null, dryRun: true };
   }
 
-  const accessToken = required("CAIOS_WORDPRESS_OAUTH_ACCESS_TOKEN");
+  const accessToken = await getValidWordPressAccessToken();
   const image = payload.featured_image as unknown as ApprovedFeaturedImage;
   const featuredImageId = await uploadWordPressFeaturedImage(image, accessToken);
   const body = encodeWordPressPost(payload, featuredImageId, expectedStatus);
