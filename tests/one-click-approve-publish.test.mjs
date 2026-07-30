@@ -24,6 +24,9 @@ test("WordPress receives only a publish payload assembled from the approved stor
   assert.match(publication, /story\.status !== "approved"/);
   assert.match(publication, /status: "publish"/);
   assert.match(publication, /buildWordPressContent/);
+  assert.match(publication, /getApprovedStoryImage/);
+  assert.match(publication, /approved_image_missing/);
+  assert.match(publication, /featured_image/);
 });
 
 test("database marks published only after WordPress success and audits failure", () => {

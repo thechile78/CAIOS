@@ -1,13 +1,16 @@
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { requireCurrentProfile, roleCanEdit, roleCanReview } from "@/lib/auth";
 import { formatHoustonDateTime } from "@/lib/date-time";
+import { getApprovedStoryImage, searchOpenverseImages } from "@/lib/image-rights";
 import { getStoryIntelligence } from "@/lib/story-intelligence";
 import { getWordPressPublicationState } from "@/lib/wordpress-publication";
 import { submitStoryForApprovalAction } from "./actions";
 import { recordEditorialDecisionAction, saveEditorialChecklistAction } from "./approval-actions";
 import { EditorialScorecard } from "./editorial-scorecard";
+import { approveStoryImageAction } from "./image-rights-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +24,9 @@ interface StoryPageProps {
     decision_recorded?: string;
     publication_error?: string;
     published?: string;
+    image_approved?: string;
+    image_error?: string;
+    image_query?: string;
   }>;
 }
 
@@ -31,7 +37,11 @@ export default async function StoryIntelligencePage({ params, searchParams }: St
   const intelligence = await getStoryIntelligence(id);
   if (!intelligence) notFound();
 
-  const publication = await getWordPressPublicationState(id);
+  const [publication, approvedImage, imageChoices] = await Promise.all([
+    getWordPressPublicationState(id),
+    getApprovedStoryImage(id),
+    notices.image_query ? searchOpenverseImages(notices.image_query) : Promise.resolve([]),
+  ]);
   const { story, sources, similarStories, checklist, approvals } = intelligence;
   const status = String(story.status);
   const editable = roleCanEdit(profile.role) && !["approved", "wordpress_draft", "published", "archived"].includes(status);
@@ -50,12 +60,25 @@ export default async function StoryIntelligencePage({ params, searchParams }: St
       ? "Approval requires all four checklist items to be completed."
       : notices.approval_error === "wrong_stage"
         ? "A decision can only be recorded while the story is awaiting approval."
-        : notices.approval_error
+        : notices.approval_error === "image"
+          ? "Approval requires a rights-cleared featured image or the approved branded fallback."
+          : notices.approval_error
           ? "The approval action could not be completed."
           : null;
   const publicationErrorMessage = notices.publication_error
     ? "Your approval was recorded, but WordPress did not confirm publication. The story was not marked published. Try again after checking the WordPress connection."
     : null;
+  const imageError = notices.image_error === "locked"
+    ? "Image rights are locked after story approval."
+    : notices.image_error === "https"
+      ? "The image, source, and license links must use HTTPS."
+      : notices.image_error === "commercial"
+        ? "The image must explicitly allow commercial website use."
+        : notices.image_error === "rights"
+          ? "Complete license and attribution evidence is required."
+          : notices.image_error
+            ? "The image approval could not be recorded. Review every rights field."
+            : null;
 
   return (
     <main className="content story-workspace">
@@ -69,9 +92,11 @@ export default async function StoryIntelligencePage({ params, searchParams }: St
       {errorMessage ? <div className="editorial-notice editorial-notice-error" role="alert">{errorMessage}</div> : null}
       {approvalError ? <div className="editorial-notice editorial-notice-error" role="alert">{approvalError}</div> : null}
       {publicationErrorMessage ? <div className="editorial-notice editorial-notice-error" role="alert">{publicationErrorMessage}</div> : null}
+      {imageError ? <div className="editorial-notice editorial-notice-error" role="alert">{imageError}</div> : null}
       {notices.editorial_saved ? <div className="editorial-notice editorial-notice-success" role="status">Changes saved. Current stage: {notices.editorial_saved.replaceAll("_", " ")}.</div> : null}
       {notices.checklist_saved ? <div className="editorial-notice editorial-notice-success" role="status">Editorial checklist saved and audited.</div> : null}
       {notices.decision_recorded ? <div className="editorial-notice editorial-notice-success" role="status">Editorial decision recorded: {notices.decision_recorded.replaceAll("_", " ")}.</div> : null}
+      {notices.image_approved ? <div className="editorial-notice editorial-notice-success" role="status">Featured image rights approved and audit evidence saved.</div> : null}
       {notices.published ? <div className="editorial-notice editorial-notice-success" role="status">Approved and published to WordPress successfully.</div> : null}
 
       <section className="kpi-grid">
@@ -113,6 +138,114 @@ export default async function StoryIntelligencePage({ params, searchParams }: St
         ) : <p>This record is read-only for your role or current workflow stage.</p>}
       </section>
 
+      <section className="panel image-rights-panel" id="image-rights">
+        <div className="panel-heading">
+          <div><p className="eyebrow">Copyright-safe media</p><h3>Image Rights Gate</h3></div>
+          <span className={`safety-badge ${approvedImage ? "image-rights-approved" : "safety-strong"}`}>
+            {approvedImage ? "Approved" : "Required"}
+          </span>
+        </div>
+
+        {approvedImage ? (
+          <article className="approved-image-card">
+            <Image
+              src={approvedImage.imageUrl}
+              alt={approvedImage.altText}
+              width={720}
+              height={405}
+              unoptimized
+            />
+            <div>
+              <h4>Approved featured image</h4>
+              <p><strong>Creator:</strong> {approvedImage.creator}</p>
+              <p><strong>License:</strong> {approvedImage.licenseName}</p>
+              <p><strong>Credit:</strong> {approvedImage.attributionText}</p>
+              <p><strong>Commercial use:</strong> confirmed · <strong>Modifications:</strong> {approvedImage.modificationsAllowed ? "allowed" : "not allowed"}</p>
+              <p><a href={approvedImage.sourcePageUrl} target="_blank" rel="noreferrer">Open source record</a>{approvedImage.licenseUrl ? <> · <a href={approvedImage.licenseUrl} target="_blank" rel="noreferrer">Open license</a></> : null}</p>
+            </div>
+          </article>
+        ) : (
+          <p className="editorial-notice editorial-notice-error">
+            Story approval is blocked until a reviewer approves one image below or records the official Chilemaniacs fallback.
+          </p>
+        )}
+
+        {checklistEditable ? (
+          <>
+            <form method="get" className="image-search-form">
+              <label htmlFor="image-query">Find up to three CC0 image choices</label>
+              <div>
+                <input id="image-query" name="image_query" defaultValue={notices.image_query ?? story.title} minLength={3} maxLength={120} required />
+                <button className="secondary-button" type="submit">Search approved source</button>
+              </div>
+              <p>Automated search is restricted to Openverse results marked CC0. A reviewer still makes the final selection.</p>
+            </form>
+
+            {notices.image_query ? (
+              imageChoices.length ? (
+                <div className="image-choice-grid">
+                  {imageChoices.map((choice) => (
+                    <article className="image-choice-card" key={choice.id}>
+                      <Image src={choice.thumbnailUrl} alt="" width={480} height={270} unoptimized />
+                      <div>
+                        <h4>{choice.title}</h4>
+                        <p>{choice.creator} · {choice.licenseName}</p>
+                        <p><a href={choice.sourcePageUrl} target="_blank" rel="noreferrer">Inspect source page</a> · <a href={choice.licenseUrl} target="_blank" rel="noreferrer">Inspect license</a></p>
+                        <form action={approveStoryImageAction} className="editorial-form">
+                          <input type="hidden" name="storyId" value={story.id} />
+                          <input type="hidden" name="sourceType" value="openverse" />
+                          <input type="hidden" name="imageUrl" value={choice.imageUrl} />
+                          <input type="hidden" name="sourcePageUrl" value={choice.sourcePageUrl} />
+                          <input type="hidden" name="creator" value={choice.creator} />
+                          <input type="hidden" name="licenseName" value={choice.licenseName} />
+                          <input type="hidden" name="licenseUrl" value={choice.licenseUrl} />
+                          <input type="hidden" name="attributionText" value={choice.attributionText} />
+                          <input type="hidden" name="retrievedAt" value={new Date().toISOString()} />
+                          <input type="hidden" name="commercialUseAllowed" value="true" />
+                          <input type="hidden" name="modificationsAllowed" value="true" />
+                          <label>Alt text<input name="altText" defaultValue={`${story.title}. Image by ${choice.creator}.`} minLength={5} maxLength={500} required /></label>
+                          <button className="primary-button" type="submit">Approve this image</button>
+                        </form>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              ) : <p>No eligible CC0 choices were returned. Try a broader search or record an official asset below.</p>
+            ) : null}
+
+            <details className="manual-image-rights">
+              <summary>Record an owned image, official press asset, or branded fallback</summary>
+              <form action={approveStoryImageAction} className="editorial-form">
+                <input type="hidden" name="storyId" value={story.id} />
+                <div className="editorial-form-grid">
+                  <label>Source type
+                    <select name="sourceType" required>
+                      <option value="official_press">Official press kit</option>
+                      <option value="owned">Chilemaniacs-owned image</option>
+                      <option value="branded_fallback">Chilemaniacs branded fallback</option>
+                      <option value="wordpress_photo_directory">WordPress Photo Directory</option>
+                    </select>
+                  </label>
+                  <label>Creator / rights owner<input name="creator" maxLength={300} required /></label>
+                </div>
+                <label>Direct HTTPS image URL<input name="imageUrl" type="url" pattern="https://.*" maxLength={3000} required /></label>
+                <label>Rights evidence or source-page URL<input name="sourcePageUrl" type="url" pattern="https://.*" maxLength={3000} required /></label>
+                <div className="editorial-form-grid">
+                  <label>License / permission name<input name="licenseName" maxLength={200} placeholder="Owned by Chilemaniacs, official press use, or license name" required /></label>
+                  <label>License URL, if available<input name="licenseUrl" type="url" pattern="https://.*" maxLength={3000} /></label>
+                </div>
+                <label>Required credit line<input name="attributionText" maxLength={1000} required /></label>
+                <label>Accessible alt text<input name="altText" maxLength={500} required /></label>
+                <label><input type="checkbox" name="commercialUseAllowed" required /> I verified this asset permits commercial website use.</label>
+                <label><input type="checkbox" name="modificationsAllowed" /> The permission or license allows modifications/cropping.</label>
+                <input type="hidden" name="retrievedAt" value={new Date().toISOString()} />
+                <button className="primary-button" type="submit">Approve rights record</button>
+              </form>
+            </details>
+          </>
+        ) : null}
+      </section>
+
       <section className="panel approval-center-panel">
         <div className="panel-heading"><div><p className="eyebrow">Human approval boundary</p><h3>Approval Center v1</h3></div><span className="safety-badge">Audited decisions</span></div>
         <div className="approval-status-grid">
@@ -127,7 +260,7 @@ export default async function StoryIntelligencePage({ params, searchParams }: St
             <input type="hidden" name="expectedUpdatedAt" value={story.updated_at} />
             <label><input type="checkbox" name="sourcesVerified" defaultChecked={checklist?.sources_verified ?? false} /> I reviewed and verified the cited sources.</label>
             <label><input type="checkbox" name="factsVerified" defaultChecked={checklist?.facts_verified ?? false} /> I checked the factual claims against the available reporting.</label>
-            <label><input type="checkbox" name="rightsReviewed" defaultChecked={checklist?.rights_reviewed ?? false} /> I reviewed image, media, attribution, and usage rights.</label>
+            <label><input type="checkbox" name="rightsReviewed" defaultChecked={checklist?.rights_reviewed ?? false} disabled={!approvedImage} /> I reviewed the approved image, attribution, and saved usage-rights evidence.</label>
             <label><input type="checkbox" name="seoReviewed" defaultChecked={checklist?.seo_reviewed ?? false} /> I reviewed the headline, summary, metadata, and SEO requirements.</label>
             <button className="secondary-button" type="submit">Save editorial checklist</button>
           </form>

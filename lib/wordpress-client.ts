@@ -6,6 +6,17 @@ export interface WordPressPostResult {
   dryRun: boolean;
 }
 
+interface ApprovedFeaturedImage {
+  url: string;
+  source_page_url: string;
+  creator: string;
+  license_name: string;
+  license_url: string | null;
+  attribution_text: string;
+  alt_text: string;
+  commercial_use_allowed: true;
+}
+
 function required(name: string): string {
   const value = process.env[name]?.trim();
   if (!value) throw new Error(`${name} is not configured`);
@@ -30,10 +41,36 @@ export function validateWordPressPostPayload(
   for (const forbidden of ["date", "date_gmt", "password", "author"]) {
     if (forbidden in record) throw new Error(`prohibited WordPress field: ${forbidden}`);
   }
+
+  const image = record.featured_image;
+  if (!image || typeof image !== "object" || Array.isArray(image)) {
+    throw new Error("approved featured image is required");
+  }
+  const featured = image as Record<string, unknown>;
+  for (const field of [
+    "url",
+    "source_page_url",
+    "creator",
+    "license_name",
+    "attribution_text",
+    "alt_text",
+  ]) {
+    if (typeof featured[field] !== "string" || featured[field].trim().length === 0) {
+      throw new Error(`featured image ${field} is required`);
+    }
+  }
+  for (const field of ["url", "source_page_url"]) {
+    const url = new URL(String(featured[field]));
+    if (url.protocol !== "https:") throw new Error(`featured image ${field} must use HTTPS`);
+  }
+  if (featured.commercial_use_allowed !== true) {
+    throw new Error("featured image must allow commercial use");
+  }
 }
 
 function encodeWordPressPost(
   payload: Record<string, unknown>,
+  featuredImageId: string,
   expectedStatus: "draft" | "publish",
 ): URLSearchParams {
   const body = new URLSearchParams();
@@ -49,13 +86,15 @@ function encodeWordPressPost(
   }
   body.set("status", expectedStatus);
   body.set("publicize", "false");
+  body.set("featured_image", featuredImageId);
   return body;
 }
 
-function getEndpoint(): URL {
+function getEndpoint(resource: "posts/new" | "media/new"): URL {
   const site = required("CAIOS_WORDPRESS_SITE");
+  const path = resource === "posts/new" ? "posts/new/" : "media/new/";
   return new URL(
-    `https://public-api.wordpress.com/rest/v1.1/sites/${encodeURIComponent(site)}/posts/new/`,
+    `https://public-api.wordpress.com/rest/v1.1/sites/${encodeURIComponent(site)}/${path}`,
   );
 }
 
@@ -71,6 +110,50 @@ function getWordPressError(responseText: string): string | null {
   }
 }
 
+async function uploadWordPressFeaturedImage(
+  image: ApprovedFeaturedImage,
+  accessToken: string,
+): Promise<string> {
+  const body = new URLSearchParams();
+  body.set("media_urls[]", image.url);
+  body.set("attrs[0][title]", image.alt_text);
+  body.set("attrs[0][caption]", image.attribution_text);
+  body.set(
+    "attrs[0][description]",
+    `${image.attribution_text}\nSource: ${image.source_page_url}\nLicense: ${image.license_name}${
+      image.license_url ? ` (${image.license_url})` : ""
+    }`,
+  );
+  body.set("attrs[0][alt]", image.alt_text);
+
+  const response = await fetch(getEndpoint("media/new"), {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      "content-type": "application/x-www-form-urlencoded",
+      "user-agent": "CAIOS/5.2",
+    },
+    body,
+    cache: "no-store",
+    redirect: "error",
+    signal: AbortSignal.timeout(15_000),
+  });
+  const responseText = await response.text();
+  if (!response.ok) {
+    const detail = getWordPressError(responseText);
+    throw new Error(
+      `WordPress media request failed with HTTP ${response.status}${detail ? `: ${detail}` : ""}`,
+    );
+  }
+
+  const responseBody = JSON.parse(responseText) as {
+    media?: Array<{ ID?: number | string }>;
+  };
+  const mediaId = responseBody.media?.[0]?.ID;
+  if (mediaId === undefined) throw new Error("WordPress response did not include a media id");
+  return String(mediaId);
+}
+
 async function sendWordPressPost(
   payload: unknown,
   expectedStatus: "draft" | "publish",
@@ -83,48 +166,43 @@ async function sendWordPressPost(
   }
 
   const accessToken = required("CAIOS_WORDPRESS_OAUTH_ACCESS_TOKEN");
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 10_000);
+  const image = payload.featured_image as unknown as ApprovedFeaturedImage;
+  const featuredImageId = await uploadWordPressFeaturedImage(image, accessToken);
+  const body = encodeWordPressPost(payload, featuredImageId, expectedStatus);
+  const response = await fetch(getEndpoint("posts/new"), {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      "content-type": "application/x-www-form-urlencoded",
+      "user-agent": "CAIOS/5.2",
+    },
+    body,
+    cache: "no-store",
+    redirect: "error",
+    signal: AbortSignal.timeout(15_000),
+  });
 
-  try {
-    const body = encodeWordPressPost(payload, expectedStatus);
-    const response = await fetch(getEndpoint(), {
-      method: "POST",
-      headers: {
-        authorization: `Bearer ${accessToken}`,
-        "content-type": "application/x-www-form-urlencoded",
-        "user-agent": "CAIOS/5.1",
-      },
-      body,
-      cache: "no-store",
-      redirect: "error",
-      signal: controller.signal,
-    });
-
-    const responseText = await response.text();
-    if (!response.ok) {
-      const detail = getWordPressError(responseText);
-      throw new Error(
-        `WordPress ${expectedStatus} request failed with HTTP ${response.status}${detail ? `: ${detail}` : ""}`,
-      );
-    }
-    const responseBody = JSON.parse(responseText) as {
-      ID?: number | string;
-      URL?: string;
-      status?: string;
-    };
-    if (responseBody.ID === undefined) throw new Error("WordPress response did not include a post id");
-    if (responseBody.status !== expectedStatus) {
-      throw new Error(`WordPress did not confirm ${expectedStatus} status`);
-    }
-    return {
-      id: String(responseBody.ID),
-      link: typeof responseBody.URL === "string" ? responseBody.URL : null,
-      dryRun: false,
-    };
-  } finally {
-    clearTimeout(timeout);
+  const responseText = await response.text();
+  if (!response.ok) {
+    const detail = getWordPressError(responseText);
+    throw new Error(
+      `WordPress ${expectedStatus} request failed with HTTP ${response.status}${detail ? `: ${detail}` : ""}`,
+    );
   }
+  const responseBody = JSON.parse(responseText) as {
+    ID?: number | string;
+    URL?: string;
+    status?: string;
+  };
+  if (responseBody.ID === undefined) throw new Error("WordPress response did not include a post id");
+  if (responseBody.status !== expectedStatus) {
+    throw new Error(`WordPress did not confirm ${expectedStatus} status`);
+  }
+  return {
+    id: String(responseBody.ID),
+    link: typeof responseBody.URL === "string" ? responseBody.URL : null,
+    dryRun: false,
+  };
 }
 
 export async function sendWordPressDraft(payload: unknown): Promise<WordPressPostResult> {

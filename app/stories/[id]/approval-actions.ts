@@ -24,6 +24,7 @@ function failureCode(message: string): string {
   const normalized = message.toLowerCase();
   if (normalized.includes("stale") || normalized.includes("changed")) return "conflict";
   if (normalized.includes("checklist") || normalized.includes("incomplete")) return "checklist";
+  if (normalized.includes("image") || normalized.includes("fallback")) return "image";
   if (normalized.includes("awaiting approval")) return "wrong_stage";
   return "failed";
 }
