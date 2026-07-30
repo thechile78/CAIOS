@@ -12,10 +12,19 @@ const migration = await readFile(
 
 test("one reviewer click records approval before contacting WordPress", () => {
   const approvalIndex = action.indexOf("begin_approved_wordpress_publication");
-  const publishIndex = action.indexOf("publishWordPressPost(payload)");
-  const finishIndex = action.indexOf("finish_approved_wordpress_publication");
+  const approvedPublishIndex = action.indexOf(
+    "await publishApprovedStory(storyId, publicationRecordId)",
+    approvalIndex,
+  );
+  const helperIndex = action.indexOf("async function publishApprovedStory");
+  const publishIndex = action.indexOf("publishWordPressPost(payload)", helperIndex);
+  const finishIndex = action.indexOf(
+    "finish_approved_wordpress_publication",
+    publishIndex,
+  );
   assert.ok(approvalIndex >= 0);
-  assert.ok(publishIndex > approvalIndex);
+  assert.ok(approvedPublishIndex > approvalIndex);
+  assert.ok(publishIndex > helperIndex);
   assert.ok(finishIndex > publishIndex);
   assert.match(page, /Approve &amp; Publish/);
 });

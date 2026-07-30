@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createCipheriv, randomBytes } from "node:crypto";
+import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 
 import { getServerDatabaseEnvironment } from "@/lib/server-env";
 
@@ -36,6 +36,181 @@ export function encryptSecret(value: string): string {
   const ciphertext = Buffer.concat([cipher.update(value, "utf8"), cipher.final()]);
   const tag = cipher.getAuthTag();
   return ["v1", iv.toString("base64url"), tag.toString("base64url"), ciphertext.toString("base64url")].join(".");
+}
+
+export function decryptSecret(value: string): string {
+  const [version, encodedIv, encodedTag, encodedCiphertext, extra] = value.split(".");
+  if (version !== "v1" || !encodedIv || !encodedTag || !encodedCiphertext || extra) {
+    throw new Error("Encrypted credential has an unsupported format.");
+  }
+
+  try {
+    const decipher = createDecipheriv(
+      "aes-256-gcm",
+      encryptionKey(),
+      Buffer.from(encodedIv, "base64url"),
+    );
+    decipher.setAuthTag(Buffer.from(encodedTag, "base64url"));
+    return Buffer.concat([
+      decipher.update(Buffer.from(encodedCiphertext, "base64url")),
+      decipher.final(),
+    ]).toString("utf8");
+  } catch {
+    throw new Error("Encrypted credential could not be decrypted.");
+  }
+}
+
+interface StoreWordPressConnectionInput {
+  actorId: string;
+  blogId: string;
+  blogUrl: string;
+  accessToken: string;
+  scopes: string[];
+}
+
+export async function storeWordPressConnection(
+  input: StoreWordPressConnectionInput,
+): Promise<void> {
+  const environment = getServerDatabaseEnvironment();
+  const endpoint = `${environment.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/social_oauth_connections`;
+  const lookup = new URL(endpoint);
+  lookup.searchParams.set("select", "id");
+  lookup.searchParams.set("provider", "eq.wordpress");
+  lookup.searchParams.set("limit", "1");
+  const lookupResponse = await fetch(lookup, {
+    headers: vaultHeaders(environment.SUPABASE_SERVICE_ROLE_KEY),
+    cache: "no-store",
+  });
+  if (!lookupResponse.ok) {
+    throw new Error(`Secure WordPress connection lookup failed (${lookupResponse.status}).`);
+  }
+  const existing = (await lookupResponse.json()) as Array<{ id?: string }>;
+  const row = {
+    provider: "wordpress",
+    provider_account_id: input.blogId,
+    account_name: input.blogUrl,
+    access_token_ciphertext: encryptSecret(input.accessToken),
+    refresh_token_ciphertext: null,
+    access_token_expires_at: null,
+    scopes: input.scopes,
+    metadata: { blog_url: input.blogUrl, verification: "wordpress_token_info" },
+    connected_by: input.actorId,
+    verified_at: new Date().toISOString(),
+    publishing_enabled: true,
+    scheduling_enabled: false,
+    auto_post_enabled: false,
+    auto_approval_enabled: false,
+    approval_required: true,
+  };
+  const existingId = existing[0]?.id;
+  const response = await fetch(
+    existingId ? `${endpoint}?id=eq.${encodeURIComponent(existingId)}` : endpoint,
+    {
+      method: existingId ? "PATCH" : "POST",
+      headers: vaultHeaders(environment.SUPABASE_SERVICE_ROLE_KEY, "return=minimal"),
+      body: JSON.stringify(row),
+      cache: "no-store",
+    },
+  );
+  if (!response.ok) {
+    throw new Error(`Secure WordPress token storage failed (${response.status}).`);
+  }
+
+  const auditResponse = await fetch(`${environment.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/audit_events`, {
+    method: "POST",
+    headers: vaultHeaders(environment.SUPABASE_SERVICE_ROLE_KEY, "return=minimal"),
+    body: JSON.stringify({
+      actor_id: input.actorId,
+      event_type: "wordpress_connection_verified",
+      event_data: {
+        blog_id: input.blogId,
+        blog_url: input.blogUrl,
+        scopes: input.scopes,
+        approval_required: true,
+        scheduling_enabled: false,
+        auto_post_enabled: false,
+      },
+    }),
+    cache: "no-store",
+  });
+  if (!auditResponse.ok) {
+    throw new Error(`WordPress connection audit write failed (${auditResponse.status}).`);
+  }
+}
+
+export interface WordPressConnection {
+  accessToken: string;
+  blogId: string;
+  blogUrl: string;
+  scopes: string[];
+  verifiedAt: string | null;
+}
+
+export async function getWordPressConnection(): Promise<WordPressConnection | null> {
+  const environment = getServerDatabaseEnvironment();
+  const url = new URL(`${environment.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/social_oauth_connections`);
+  url.searchParams.set(
+    "select",
+    "provider_account_id,account_name,access_token_ciphertext,scopes,metadata,verified_at",
+  );
+  url.searchParams.set("provider", "eq.wordpress");
+  url.searchParams.set("publishing_enabled", "eq.true");
+  url.searchParams.set("approval_required", "eq.true");
+  url.searchParams.set("order", "verified_at.desc");
+  url.searchParams.set("limit", "1");
+  const response = await fetch(url, {
+    headers: vaultHeaders(environment.SUPABASE_SERVICE_ROLE_KEY),
+    cache: "no-store",
+  });
+  if (!response.ok) return null;
+  const rows = (await response.json()) as Array<Record<string, unknown>>;
+  const row = rows[0];
+  if (!row || typeof row.access_token_ciphertext !== "string") return null;
+  const metadata = (row.metadata ?? {}) as Record<string, unknown>;
+  return {
+    accessToken: decryptSecret(row.access_token_ciphertext),
+    blogId: String(row.provider_account_id),
+    blogUrl:
+      typeof metadata.blog_url === "string"
+        ? metadata.blog_url
+        : String(row.account_name),
+    scopes: Array.isArray(row.scopes) ? row.scopes.map(String) : [],
+    verifiedAt: typeof row.verified_at === "string" ? row.verified_at : null,
+  };
+}
+
+export async function getWordPressConnectionSummary(): Promise<
+  Omit<WordPressConnection, "accessToken"> | null
+> {
+  const environment = getServerDatabaseEnvironment();
+  const url = new URL(`${environment.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/social_oauth_connections`);
+  url.searchParams.set(
+    "select",
+    "provider_account_id,account_name,scopes,metadata,verified_at",
+  );
+  url.searchParams.set("provider", "eq.wordpress");
+  url.searchParams.set("publishing_enabled", "eq.true");
+  url.searchParams.set("approval_required", "eq.true");
+  url.searchParams.set("order", "verified_at.desc");
+  url.searchParams.set("limit", "1");
+  const response = await fetch(url, {
+    headers: vaultHeaders(environment.SUPABASE_SERVICE_ROLE_KEY),
+    cache: "no-store",
+  });
+  if (!response.ok) return null;
+  const rows = (await response.json()) as Array<Record<string, unknown>>;
+  const row = rows[0];
+  if (!row) return null;
+  const metadata = (row.metadata ?? {}) as Record<string, unknown>;
+  return {
+    blogId: String(row.provider_account_id),
+    blogUrl:
+      typeof metadata.blog_url === "string"
+        ? metadata.blog_url
+        : String(row.account_name),
+    scopes: Array.isArray(row.scopes) ? row.scopes.map(String) : [],
+    verifiedAt: typeof row.verified_at === "string" ? row.verified_at : null,
+  };
 }
 
 interface StoreYoutubeConnectionInput {
