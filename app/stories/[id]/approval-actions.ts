@@ -29,6 +29,52 @@ function failureCode(message: string): string {
   return "failed";
 }
 
+function publicationFailureCode(message: string): string {
+  const normalized = message.toLowerCase();
+  if (
+    normalized.includes("permission") ||
+    normalized.includes("scope") ||
+    normalized.includes("token") ||
+    normalized.includes("connect")
+  ) {
+    return "wordpress_connection";
+  }
+  if (normalized.includes("image") || normalized.includes("media")) return "image";
+  return "publish_failed";
+}
+
+async function publishApprovedStory(
+  storyId: string,
+  publicationRecordId: string,
+): Promise<string | null> {
+  const supabase = await createSupabaseServerClient();
+  try {
+    const payload = await buildApprovedWordPressPayload(storyId);
+    const result = await publishWordPressPost(payload);
+    if (result.dryRun) throw new Error("WordPress production publishing is in dry-run mode");
+
+    const { error: finishError } = await supabase.rpc("finish_approved_wordpress_publication", {
+      p_publication_record_id: publicationRecordId,
+      p_success: true,
+      p_external_id: result.id,
+      p_external_url: result.link,
+      p_error: null,
+    });
+    if (finishError) throw new Error(finishError.message);
+    return null;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "WordPress publication failed";
+    await supabase.rpc("finish_approved_wordpress_publication", {
+      p_publication_record_id: publicationRecordId,
+      p_success: false,
+      p_external_id: null,
+      p_external_url: null,
+      p_error: message,
+    });
+    return publicationFailureCode(message);
+  }
+}
+
 export async function saveEditorialChecklistAction(formData: FormData) {
   await requireRole(checklistRoles);
   const storyId = value(formData, "storyId");
@@ -76,31 +122,11 @@ export async function recordEditorialDecisionAction(formData: FormData) {
       redirect(`/stories/${storyId}?approval_error=${failureCode(beginError?.message ?? "failed")}`);
     }
 
-    try {
-      const payload = await buildApprovedWordPressPayload(storyId);
-      const result = await publishWordPressPost(payload);
-      if (result.dryRun) throw new Error("WordPress production publishing is in dry-run mode");
-
-      const { error: finishError } = await supabase.rpc("finish_approved_wordpress_publication", {
-        p_publication_record_id: publicationRecordId,
-        p_success: true,
-        p_external_id: result.id,
-        p_external_url: result.link,
-        p_error: null,
-      });
-      if (finishError) throw new Error(finishError.message);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "WordPress publication failed";
-      await supabase.rpc("finish_approved_wordpress_publication", {
-        p_publication_record_id: publicationRecordId,
-        p_success: false,
-        p_external_id: null,
-        p_external_url: null,
-        p_error: message,
-      });
+    const publicationError = await publishApprovedStory(storyId, publicationRecordId);
+    if (publicationError) {
       revalidatePath("/");
       revalidatePath(`/stories/${storyId}`);
-      redirect(`/stories/${storyId}?publication_error=publish_failed`);
+      redirect(`/stories/${storyId}?publication_error=${publicationError}`);
     }
 
     revalidatePath("/");
@@ -120,4 +146,32 @@ export async function recordEditorialDecisionAction(formData: FormData) {
   revalidatePath("/");
   revalidatePath(`/stories/${storyId}`);
   redirect(`/stories/${storyId}?decision_recorded=${decision}`);
+}
+
+export async function retryWordPressPublicationAction(formData: FormData) {
+  await requireRole(reviewerRoles);
+  const storyId = value(formData, "storyId");
+  if (!storyId) redirect("/?publication_error=invalid_input");
+
+  const supabase = await createSupabaseServerClient();
+  const { data: publicationRecordId, error: beginError } = await supabase.rpc(
+    "begin_wordpress_publication_retry",
+    { p_story_id: storyId },
+  );
+  if (beginError || !publicationRecordId) {
+    redirect(
+      `/stories/${storyId}?publication_error=${publicationFailureCode(
+        beginError?.message ?? "WordPress retry could not start",
+      )}`,
+    );
+  }
+
+  const publicationError = await publishApprovedStory(storyId, publicationRecordId);
+  revalidatePath("/");
+  revalidatePath("/approval-queue");
+  revalidatePath(`/stories/${storyId}`);
+  if (publicationError) {
+    redirect(`/stories/${storyId}?publication_error=${publicationError}`);
+  }
+  redirect(`/stories/${storyId}?published=1`);
 }
