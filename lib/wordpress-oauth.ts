@@ -111,6 +111,11 @@ interface WordPressOAuthErrorResponse {
   error?: unknown;
 }
 
+interface WordPressSiteResponse {
+  ID?: string | number;
+  URL?: string;
+}
+
 export interface VerifiedWordPressToken {
   accessToken: string;
   blogId: string;
@@ -133,6 +138,33 @@ export function assertWordPressScopes(scopes: readonly string[]): void {
       `WordPress connection is missing required permission: ${missing.join(", ")}.`,
     );
   }
+}
+
+async function getConfiguredWordPressSite(): Promise<{
+  blogId: string;
+  blogUrl: string;
+}> {
+  const site = getWordPressOAuthEnvironment().site;
+  const url = new URL(
+    `https://public-api.wordpress.com/rest/v1.1/sites/${encodeURIComponent(site)}`,
+  );
+  url.searchParams.set("fields", "ID,URL");
+  const response = await fetch(url, {
+    cache: "no-store",
+    redirect: "error",
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!response.ok) {
+    throw new Error("The configured WordPress site could not be verified.");
+  }
+  const configuredSite = (await response.json()) as WordPressSiteResponse;
+  if (!configuredSite.ID || !configuredSite.URL) {
+    throw new Error("The configured WordPress site could not be identified.");
+  }
+  return {
+    blogId: String(configuredSite.ID),
+    blogUrl: configuredSite.URL,
+  };
 }
 
 function safeWordPressOAuthErrorCode(body: string): string | null {
@@ -164,13 +196,19 @@ export async function inspectWordPressToken(
   const token = (await response.json()) as WordPressTokenResponse;
   const scopes = scopesFrom(token.scope);
   assertWordPressScopes(scopes);
-  if (!token.blog_id || !token.blog_url) {
+  if (!token.blog_id) {
     throw new Error("WordPress did not identify the authorized site.");
+  }
+  const configuredSite = await getConfiguredWordPressSite();
+  if (String(token.blog_id) !== configuredSite.blogId) {
+    throw new Error(
+      "WordPress authorized a different site. Reconnect WordPress and select Chilemaniacs.",
+    );
   }
   return {
     accessToken,
-    blogId: String(token.blog_id),
-    blogUrl: token.blog_url,
+    blogId: configuredSite.blogId,
+    blogUrl: configuredSite.blogUrl,
     scopes,
   };
 }

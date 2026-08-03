@@ -14,6 +14,10 @@ test("WordPress authorization requests posts and media with a fixed callback", a
   assert.match(oauth, /scope", WORDPRESS_REQUIRED_SCOPES\.join\(" "\)/);
   assert.match(oauth, /public-api\.wordpress\.com\/oauth2\/authorize/);
   assert.match(oauth, /public-api\.wordpress\.com\/oauth2\/token-info/);
+  assert.match(oauth, /public-api\.wordpress\.com\/rest\/v1\.1\/sites/);
+  assert.match(oauth, /fields", "ID,URL"/);
+  assert.match(oauth, /String\(token\.blog_id\) !== configuredSite\.blogId/);
+  assert.doesNotMatch(oauth, /!token\.blog_id \|\| !token\.blog_url/);
   assert.match(oauth, /assertWordPressScopes\(scopes\)/);
 });
 
